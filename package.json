@@ -11,22 +11,27 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@copilotkit/react-core": "^1.79.1",
+    "@copilotkit/runtime": "^1.79.1",
     "@fontsource-variable/open-sans": "^5.3.0",
     "@fontsource-variable/roboto-mono": "^5.3.0",
     "@kepler.gl/actions": "^3.3.0-alpha.16",
     "@kepler.gl/components": "^3.3.0-alpha.16",
     "@kepler.gl/reducers": "^3.3.0-alpha.16",
+    "@langchain/core": "^1.2.18",
     "assert": "^2.1.0",
     "d3-scale": "^4.0.2",
     "kepler.gl": "^3.3.0-alpha.16",
     "mapbox-gl": "^3.33.0",
+    "openai": "^7.39.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-is": "^19.3.1",
     "react-redux": "^9.3.0",
     "recharts": "^3.10.1",
     "redux": "^5.0.1",
-    "styled-components": "^6.6.0"
+    "styled-components": "^6.6.0",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@babel/core": "^7.29.7",
@@ -63,6 +68,7 @@
     "@deck.gl/aggregation-layers": "9.3.11",
     "@deck.gl/mapbox": "9.3.11",
     "@deck.gl/react": "9.3.11",
-    "@deck.gl/widgets": "9.3.11"
+    "@deck.gl/widgets": "9.3.11",
+    "openai": "^7.39.0"
   }
 }
