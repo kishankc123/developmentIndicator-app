@@ -1,13 +1,22 @@
-import { numericToAlpha3 } from 'i18n-iso-countries'
+/**
+ * Mapbox and the World Bank both use ISO 3166-1 alpha-3 codes, so the join is
+ * direct except for Kosovo: Mapbox uses "XKS" (per its docs) while the World
+ * Bank API uses "XKX". These helpers translate at the boundary so the rest of
+ * the app only ever sees World Bank codes.
+ */
+const WORLD_BANK_TO_MAPBOX: Record<string, string> = { XKX: 'XKS' }
+const MAPBOX_TO_WORLD_BANK: Record<string, string> = { XKS: 'XKX' }
+
+/** Converts a World Bank country code to the code Mapbox's tileset uses. */
+export function worldBankToMapboxCode(code: string): string {
+  return WORLD_BANK_TO_MAPBOX[code] ?? code
+}
 
 /**
- * Converts a map feature id to the ISO3 code the World Bank uses.
- * The `world-atlas` map identifies countries by ISO 3166-1 *numeric* code
- * (e.g. "524"), while the API uses alpha-3 (e.g. "NPL"), so this is the join key.
- * Returns undefined for features with no id or no match (e.g. Kosovo, which has
- * no numeric id in the atlas); those render as "no data".
+ * Converts a Mapbox tileset code to a World Bank code.
+ * Returns undefined when the tile feature has no code (disputed areas).
  */
-export function featureIdToIso3(id: string | number | undefined): string | undefined {
-  if (id === undefined || id === null) return undefined
-  return numericToAlpha3(String(id))
+export function mapboxToWorldBankCode(code: unknown): string | undefined {
+  if (typeof code !== 'string' || code === '') return undefined
+  return MAPBOX_TO_WORLD_BANK[code] ?? code
 }

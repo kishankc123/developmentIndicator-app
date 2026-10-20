@@ -24,3 +24,12 @@
   font-size: 0.8rem;
   text-align: center;
 }
+
+.app__map {
+  transition: opacity 0.2s;
+}
+
+/* Previous data stays visible but dimmed while the next indicator loads. */
+.app__map--refreshing {
+  opacity: 0.55;
+}

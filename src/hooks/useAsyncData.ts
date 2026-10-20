@@ -1,8 +1,12 @@
 import { useEffect, useState } from 'react'
 
-/** Result of an async load: still loading, failed, or done. */
+/**
+ * Result of an async load: still loading, failed, or done.
+ * While loading a new key, `previous` holds the last successful data (if any) so
+ * callers can keep showing it instead of unmounting, e.g. to avoid rebuilding a map.
+ */
 export type AsyncState<T> =
-  | { status: 'loading' }
+  | { status: 'loading'; previous?: T }
   | { status: 'error'; error: Error }
   | { status: 'success'; data: T }
 
@@ -37,7 +41,7 @@ export function useAsyncData<T>(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key])
 
-  if (!settled || settled.key !== key) return { status: 'loading' }
+  if (!settled || settled.key !== key) return { status: 'loading', previous: settled?.data }
   if (settled.error) return { status: 'error', error: settled.error }
   return { status: 'success', data: settled.data as T }
 }

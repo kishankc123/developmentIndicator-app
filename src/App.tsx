@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import { AppHeader } from './components/AppHeader'
 import { CountrySelector } from './components/CountrySelector'
 import { IndicatorSelector } from './components/IndicatorSelector'
@@ -6,7 +6,6 @@ import { Panel } from './components/Panel'
 import { StatCard } from './components/StatCard'
 import { StatusMessage } from './components/StatusMessage'
 import { TrendChart, type TrendSeries } from './components/TrendChart'
-import { WorldMap } from './components/WorldMap'
 import { INDICATORS } from './config/indicators'
 import { DEFAULT_COUNTRY_CODES, MAX_SELECTED_COUNTRIES, SERIES_COLORS } from './config/theme'
 import { useCountries } from './hooks/useCountries'
@@ -16,6 +15,9 @@ import type { Observation } from './types/worldBank'
 import { formatValue } from './utils/format'
 import { summarize } from './utils/stats'
 import './App.css'
+
+// Lazy so the large Mapbox GL library loads as its own chunk, after the page shell renders.
+const WorldMap = lazy(() => import('./components/WorldMap').then((m) => ({ default: m.WorldMap })))
 
 /** Dashboard root: owns the selected indicator and countries and wires data to panels. */
 function App() {
@@ -41,10 +43,13 @@ function App() {
 
   // The latest-value call also returns aggregates (e.g. "World"); keep only real countries
   // that have a value, keyed by ISO3 code for the map join.
+  // While a new indicator loads we keep the previous data so the map stays mounted
+  // (rebuilding it would reload tiles and count as another Mapbox map load).
+  const latestData = latest.status === 'success' ? latest.data : latest.status === 'loading' ? latest.previous : undefined
   const countryObservations = new Map<string, Observation>()
-  if (countries.status === 'success' && latest.status === 'success') {
+  if (countries.status === 'success' && latestData) {
     const countryCodes = new Set(countries.data.map((c) => c.code))
-    for (const o of latest.data) {
+    for (const o of latestData) {
       if (countryCodes.has(o.countryCode) && o.value !== null) {
         countryObservations.set(o.countryCode, o)
       }
@@ -69,7 +74,9 @@ function App() {
   const show = (o: Observation | undefined) =>
     o?.value != null ? formatValue(o.value, indicator.format) : '—'
 
-  const mapLoading = countries.status === 'loading' || latest.status === 'loading'
+  // Only block the panel on first load; later switches keep the map and dim it (see `refreshing`).
+  const mapLoading = countries.status === 'loading' || (latest.status === 'loading' && !latest.previous)
+  const refreshing = latest.status === 'loading' && latest.previous !== undefined
   const mapError = countries.status === 'error' ? countries : latest.status === 'error' ? latest : null
 
   return (
@@ -105,12 +112,16 @@ function App() {
         ) : mapLoading ? (
           <StatusMessage kind="loading" message="Loading map data…" />
         ) : (
-          <WorldMap
-            observations={countryObservations}
-            format={indicator.format}
-            selectedCodes={selectedCodes}
-            onCountryClick={toggleCountry}
-          />
+          <Suspense fallback={<StatusMessage kind="loading" message="Loading map…" />}>
+            <div className={refreshing ? 'app__map app__map--refreshing' : 'app__map'} aria-busy={refreshing}>
+            <WorldMap
+              observations={countryObservations}
+              format={indicator.format}
+              selectedCodes={selectedCodes}
+              onCountryClick={toggleCountry}
+            />
+            </div>
+          </Suspense>
         )}
         <p className="app__footnote">
           Each country shows its most recent available year, so years differ between countries.
