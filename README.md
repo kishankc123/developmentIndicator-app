@@ -8,7 +8,7 @@ React 19, TypeScript, Vite (with React Compiler), Recharts, Mapbox GL JS, Vitest
 ## Setup
 1. `npm install`
 2. Create a public Mapbox token (starts with `pk.`) at https://account.mapbox.com/access-tokens/
-3. `cp .env.example .env.local` and set `VITE_MAPBOX_TOKEN` (`.env.local` is git-ignored)
+3. `cp .env.example .env.local` and set `VITE_MAPBOX_PUBLIC_ACCESS` (`.env.local` is git-ignored)
 4. `npm run dev` (restart it after changing env vars)
 
 Without a token the map panel shows a setup message; the rest of the dashboard still works.

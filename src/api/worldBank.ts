@@ -64,6 +64,13 @@ function toObservation(raw: RawObservation): Observation | null {
   }
 }
 
+/** Parses an API coordinate string; the API uses "" for unknown, which must not become 0. */
+function parseCoordinate(raw: string | undefined): number | null {
+  if (!raw) return null
+  const value = Number(raw)
+  return Number.isFinite(value) ? value : null
+}
+
 /** Fetches all countries, excluding regional and income aggregates. */
 export async function fetchCountries(signal?: AbortSignal): Promise<Country[]> {
   const rows = await fetchAllRows<RawCountry>('country', {}, signal)
@@ -77,6 +84,8 @@ export async function fetchCountries(signal?: AbortSignal): Promise<Country[]> {
         // The API pads region names with trailing spaces.
         region: row.region.value.trim(),
         incomeLevel: row.incomeLevel.value.trim(),
+        latitude: parseCoordinate(row.latitude),
+        longitude: parseCoordinate(row.longitude),
       }))
   )
 }
