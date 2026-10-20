@@ -1,5 +1,5 @@
 /** Public Mapbox access token from `.env.local`; undefined when not configured. */
-export const MAPBOX_TOKEN: string | undefined = import.meta.env.VITE_MAPBOX_TOKEN || undefined
+export const MAPBOX_TOKEN: string | undefined = import.meta.env.VITE_MAPBOX_PUBLIC_ACCESS || undefined
 
 /** Mapbox basemap styles; chosen by the user's light/dark preference. */
 export const MAP_STYLE_LIGHT = 'mapbox://styles/mapbox/light-v11'
