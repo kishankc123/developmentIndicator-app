@@ -53,3 +53,11 @@ GDP per capita, GDP growth, inflation, unemployment, GNI per capita, Gini.
   - `resolve.alias.assert` + `define['process.env.NODE_DEBUG']`: Kepler calls Node's `assert`, which Vite stubs out in the browser.
   - `overrides` pins all `@deck.gl/*` to 9.3.11: Kepler's own ranges let `widgets` float to 9.4.0, which needs a newer core and breaks the production build.
 - The instance is registered (`registerEntry`) before data is dispatched because Kepler silently drops actions sent before its component mounts.
+
+## Chat assistant (CopilotKit)
+- A CopilotKit sidebar (`components/Assistant.tsx`, lazy-loaded, ~1.6 MB chunk) answers questions about the current data and can switch the indicator or add/remove comparison countries. What it sees is shared with `useAgentContext`; what it can do is registered with `useFrontendTool`.
+- The runtime (`server/copilotRuntime.ts`, `gpt-4.1-mini`) runs as a Vercel Function at `/api/copilotkit` (`api/copilotkit/[...path].ts`). In `npm run dev` the same runtime is served by `server/copilotDevPlugin.ts`, so no extra process is needed.
+- Set `OPENAI_API_KEY` in `.env.local` (and in Vercel). It has no `VITE_` prefix on purpose, so it stays server-side. Without it the chat shows an error; the rest of the dashboard works.
+- `openai` is a direct dependency and pinned with `overrides`: CopilotKit's optional peers otherwise pull `openai@4`, which wants zod 3 while Kepler's packages use zod 4.
+- CopilotKit styles itself with a `.dark` class, so `Assistant` mirrors the OS colour scheme onto `<html>`.
+- Each question sends the visible country data to OpenAI and costs tokens; use a key with a spending limit.

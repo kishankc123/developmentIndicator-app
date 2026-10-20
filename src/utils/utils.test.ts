@@ -3,6 +3,7 @@ import type { Observation } from '../types/worldBank'
 import { toChartRows } from './chartRows'
 import { buildColorScale } from './colorScale'
 import { mapboxToWorldBankCode, worldBankToMapboxCode } from './countryCode'
+import { findCountry } from './countryLookup'
 import { buildKeplerDataset } from './keplerData'
 import { buildFillColorExpression, buildSelectedFilter } from './mapExpressions'
 import { formatValue } from './format'
@@ -131,5 +132,25 @@ describe('buildKeplerDataset', () => {
     expect(rows).toHaveLength(1)
     expect(rows[0]).toEqual(['AAA', 'AAA', 'R', 'I', 2020, 5, 1, 2])
     expect(rows[0]).toHaveLength(fields.length)
+  })
+})
+
+describe('findCountry', () => {
+  const countries = [
+    { code: 'NPL', name: 'Nepal', region: 'R', incomeLevel: 'I', latitude: null, longitude: null },
+    { code: 'USA', name: 'United States', region: 'R', incomeLevel: 'I', latitude: null, longitude: null },
+    { code: 'ARE', name: 'United Arab Emirates', region: 'R', incomeLevel: 'I', latitude: null, longitude: null },
+  ]
+  it('matches ISO3 code and exact name ignoring case', () => {
+    expect(findCountry('npl', countries)?.code).toBe('NPL')
+    expect(findCountry('  Nepal ', countries)?.code).toBe('NPL')
+  })
+  it('matches a unique partial name', () => {
+    expect(findCountry('states', countries)?.code).toBe('USA')
+  })
+  it('refuses ambiguous or unknown text instead of guessing', () => {
+    expect(findCountry('united', countries)).toBeUndefined()
+    expect(findCountry('atlantis', countries)).toBeUndefined()
+    expect(findCountry('', countries)).toBeUndefined()
   })
 })

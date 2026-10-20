@@ -23,6 +23,9 @@ const WorldMap = lazy(() => import('./components/WorldMap').then((m) => ({ defau
 // Kepler.gl is far larger than Mapbox GL alone, so it is its own lazy chunk too.
 const KeplerMap = lazy(() => import('./components/KeplerMap').then((m) => ({ default: m.KeplerMap })))
 
+// Chat is lazy-loaded too: it is only needed after the user opens the assistant.
+const Assistant = lazy(() => import('./components/Assistant').then((m) => ({ default: m.Assistant })))
+
 /** Dashboard root: owns the selected indicator and countries and wires data to panels. */
 function App() {
   const [indicatorId, setIndicatorId] = useState(INDICATORS[0].id)
@@ -178,6 +181,20 @@ function App() {
       <footer className="app__footer">
         Source: World Bank Open Data (World Development Indicators).
       </footer>
+      {countries.status === 'success' && (
+        <Suspense fallback={null}>
+          <Assistant
+            indicators={INDICATORS}
+            indicator={indicator}
+            countries={countries.data}
+            selectedCodes={selectedCodes}
+            observations={countryObservations}
+            onSelectIndicator={setIndicatorId}
+            onAddCountry={addCountry}
+            onRemoveCountry={removeCountry}
+          />
+        </Suspense>
+      )}
     </div>
   )
 }
