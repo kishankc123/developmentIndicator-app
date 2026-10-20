@@ -1,78 +1,36 @@
-# React + TypeScript + Vite
+# Development Indicator
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A dashboard of world development indicators (economy and prosperity first), built from World Bank open data.
 
-Currently, two official plugins are available:
+## Stack
+React 19, TypeScript, Vite (with React Compiler), Recharts, react-simple-maps, Vitest + React Testing Library.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Scripts
+- `npm run dev`: start the dev server
+- `npm run build`: typecheck and build
+- `npm run lint`: ESLint
+- `npm test`: run unit and component tests
 
-## React Compiler
-
-The React Compiler is enabled on this template. See [this documentation](https://react.dev/learn/react-compiler) for more information.
-
-Note: This will impact Vite dev & build performances.
-You can also try [the experimental native React Compiler support in plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md#rust-react-compiler) by using `compiler: true` in the plugin options instead of using the Babel plugin.
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+## Structure
+```
+src/
+├── api/         World Bank requests (typed, no React)
+├── types/       API and domain types
+├── config/      Indicator list and theme constants
+├── hooks/       Data hooks (useCountries, useIndicator, useTrend, useAsyncData)
+├── components/  Small presentational components with co-located CSS
+├── utils/       Pure helpers (formatting, colour scale, stats, chart rows)
+└── App.tsx      Owns selection state and wires data to components
 ```
 
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
+## Data
+Source: World Bank API v2 (no key needed). Indicators in `src/config/indicators.ts`:
+GDP per capita, GDP growth, inflation, unemployment, GNI per capita, Gini.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+- The map uses each country's **most recent available value** (`mrnev=1`), so the year differs per country.
+- Map shapes come from `world-atlas` (numeric ISO ids); they are joined to the API's ISO3 codes with `i18n-iso-countries`. Territories without a numeric id (e.g. Kosovo) show as "no data".
+- Aggregates ("World", "Arab World", ...) are filtered out using the country list's region id `NA`.
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
-```
+## Notes
+- TypeScript is pinned to 6.0.x because `typescript-eslint` 8.72 does not yet accept TypeScript 7. Revisit when it does.
+- Not yet done: Playwright end-to-end tests, map zoom, keyboard access to map countries (the country dropdown is the keyboard route).
