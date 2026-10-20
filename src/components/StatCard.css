@@ -18,7 +18,8 @@
 }
 
 .stat-card__value {
-  font-size: 1.8rem;
+  font-family: var(--mono-font-family);
+  font-size: 1.7rem;
   font-weight: 700;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;

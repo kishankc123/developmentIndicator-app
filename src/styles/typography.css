@@ -1,0 +1,91 @@
+/*
+ * Typography tokens and base element styles.
+ * Token names follow the design spec. Where the spec gave no value, the value
+ * here is an ASSUMPTION (marked "assumed") and should be replaced with the real one.
+ */
+@import '@fontsource-variable/open-sans/wght.css';
+@import '@fontsource-variable/roboto-mono/wght.css';
+
+:root {
+  /* Font stacks: Open Sans first, then Roboto, then system sans (spec stack). */
+  --global-font-family: 'Open Sans Variable', 'Open Sans', roboto, system-ui, -apple-system,
+    'Segoe UI', sans-serif;
+  /* Assumed: the spec does not say which stack headings use; Open Sans like the body. */
+  --heading-font-family: var(--global-font-family);
+  /* Spec mono stack; used for data figures such as stat values. */
+  --mono-font-family: 'Roboto Mono Variable', 'Roboto Mono', menlo, consolas,
+    'Liberation Mono', monospace;
+
+  /* Sizes: assumed; the token number reads as size in 1/25 rem-ish steps (400 = 1rem). */
+  --body-font-size: 1rem;
+  --font-size-400: 1rem;
+  --font-size-1000: 2.5rem;
+  --font-size-1100: 2.75rem;
+  --loop-xl-button-font-size: 1rem;
+
+  /* Weights: assumed standard values. */
+  --body-font-weight-regular: 400;
+  --body-font-weight-bold: 700;
+  --loop-button-label-font-weight: 600;
+  --loop-button-label-line-height: 1.25;
+
+  /* Colours: assumed; mapped onto the app's existing theme so dark mode keeps working. */
+  --neutral-solid-90-s: var(--color-text);
+  --text-on-light-emphasis: var(--color-text);
+  --text-on-light-default: var(--color-text);
+  --text-on-light-link-primary-enabled: var(--color-accent);
+  --text-on-dark-link-primary-enabled: var(--color-text);
+}
+
+body {
+  font-family: var(--global-font-family);
+  font-size: var(--body-font-size);
+  color: var(--neutral-solid-90-s);
+  line-height: 1.4;
+}
+
+h1 {
+  font-family: var(--heading-font-family);
+  font-size: var(--font-size-1100);
+  font-weight: var(--body-font-weight-bold);
+  color: var(--text-on-light-emphasis);
+  line-height: 1.1;
+}
+
+h2 {
+  font-family: var(--heading-font-family);
+  font-size: var(--font-size-1000);
+  font-weight: var(--body-font-weight-bold);
+  color: var(--text-on-light-emphasis);
+  line-height: 1.2;
+}
+
+p {
+  font-size: var(--font-size-400);
+  font-weight: var(--body-font-weight-regular);
+  color: var(--text-on-light-default);
+  line-height: 150%;
+}
+
+a {
+  font-family: var(--global-font-family);
+  font-size: var(--loop-xl-button-font-size);
+  font-weight: var(--loop-button-label-font-weight);
+  font-style: normal;
+  color: var(--text-on-light-link-primary-enabled);
+  line-height: var(--loop-button-label-line-height);
+}
+
+button {
+  font-family: var(--global-font-family);
+  font-size: var(--loop-xl-button-font-size);
+  font-weight: var(--loop-button-label-font-weight);
+  font-style: normal;
+  line-height: var(--loop-button-label-line-height);
+}
+
+/* Controls do not inherit the page font by default. */
+select,
+input {
+  font-family: var(--global-font-family);
+}
