@@ -1,0 +1,80 @@
+/*
+ * A2UI's built-in Card hard-codes a white inline background (no theme setting exists for it).
+ * In dark mode its text is near-white, so the card becomes unreadable. Restyle it, only
+ * inside the chat and only while the `.dark` class (see useDarkClassFromOs) is active.
+ * `!important` is needed to beat the inline style.
+ */
+.dark .a2ui-surface div[style*="background-color: rgb(255, 255, 255)"] {
+  background-color: var(--color-surface) !important;
+  border-color: var(--color-border) !important;
+  box-shadow: none !important;
+}
+
+/* Charts shown in the chat (show_bar_chart / show_trend_chart). */
+.chat-chart {
+  margin: 0.5rem 0;
+  padding: 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.chat-chart__title {
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.chat-chart__note {
+  margin: 0.5rem 0 0;
+  font-size: 0.75rem;
+  color: var(--color-muted);
+}
+
+/*
+ * CopilotKit's sidebar is z-index 1200 and its toggle 1100, so anything of ours that must be
+ * seen while it is open has to sit above that.
+ */
+
+/* "New chat": in the sidebar header, left of the close button. */
+.chat-clear {
+  position: fixed;
+  top: 0.9rem;
+  right: 4.5rem;
+  z-index: 1300;
+  padding: 0.35rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+/* Shown after the per-IP rate limit (HTTP 429) rejects a message. */
+.chat-notice {
+  position: fixed;
+  right: 1.5rem;
+  bottom: 7rem;
+  z-index: 1300;
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  max-width: 22rem;
+  padding: 0.6rem 0.9rem;
+  border: 1px solid var(--color-danger);
+  border-radius: 10px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 0.85rem;
+}
+
+.chat-notice button {
+  border: 0;
+  background: none;
+  color: var(--color-accent);
+  font: inherit;
+  cursor: pointer;
+}

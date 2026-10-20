@@ -1,12 +1,14 @@
 import react, { reactCompilerPreset } from '@vitejs/plugin-react'
 import babel from '@rolldown/plugin-babel'
 import { defineConfig } from 'vitest/config'
+import { copilotDevPlugin } from './server/copilotDevPlugin.ts'
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
     react(),
-    babel({ presets: [reactCompilerPreset()] })
+    babel({ presets: [reactCompilerPreset()] }),
+    copilotDevPlugin(),
   ],
   resolve: {
     // Kepler.gl calls Node's `assert`, which Vite stubs out in the browser (calling it then
