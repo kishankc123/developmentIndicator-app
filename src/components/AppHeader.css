@@ -4,7 +4,10 @@
   letter-spacing: -0.02em;
 }
 
-.app-header__tagline {
-  margin: 0.25rem 0 0;
+.app-header__intro {
+  margin: 0.5rem 0 0;
+  /* Keeps lines readable and the paragraph about 4-5 lines on a desktop-width page. */
+  max-width: 75ch;
   color: var(--color-muted);
+  line-height: 1.55;
 }

@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { INDICATORS } from '../config/indicators'
 import type { Country } from '../types/worldBank'
+import { AppHeader } from './AppHeader'
 import { CountrySelector } from './CountrySelector'
 import { IndicatorSelector } from './IndicatorSelector'
 import { StatCard } from './StatCard'
@@ -13,6 +14,23 @@ const countries: Country[] = [
   { code: 'USA', name: 'United States', region: 'North America', incomeLevel: 'High income', latitude: null, longitude: null },
   { code: 'IND', name: 'India', region: 'South Asia', incomeLevel: 'Lower middle income', latitude: null, longitude: null },
 ]
+
+describe('AppHeader', () => {
+  it('names the product as the page heading', () => {
+    render(<AppHeader />)
+    expect(screen.getByRole('heading', { level: 1, name: 'Development Indicator' })).toBeInTheDocument()
+  })
+
+  it('explains the data source, the map and the comparison in one paragraph', () => {
+    render(<AppHeader />)
+    const intro = screen.getByText(/World Bank/)
+    // A few lines of prose, not a one-line tagline (about 4-5 lines at the header's width).
+    expect((intro.textContent ?? '').length).toBeGreaterThan(300)
+    expect(intro).toHaveTextContent(/map/i)
+    expect(intro).toHaveTextContent(/compar/i)
+    expect(intro).toHaveTextContent(/year/i)
+  })
+})
 
 describe('StatCard', () => {
   it('shows label, value and detail', () => {
