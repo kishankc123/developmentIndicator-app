@@ -13,6 +13,7 @@ import { useIndicator } from './hooks/useIndicator'
 import { useTrend } from './hooks/useTrend'
 import type { Observation } from './types/worldBank'
 import { formatValue } from './utils/format'
+import { toCountryObservations } from './utils/chartData'
 import { buildKeplerDataset } from './utils/keplerData'
 import { summarize } from './utils/stats'
 import './App.css'
@@ -53,15 +54,10 @@ function App() {
   // While a new indicator loads we keep the previous data so the map stays mounted
   // (rebuilding it would reload tiles and count as another Mapbox map load).
   const latestData = latest.status === 'success' ? latest.data : latest.status === 'loading' ? latest.previous : undefined
-  const countryObservations = new Map<string, Observation>()
-  if (countries.status === 'success' && latestData) {
-    const countryCodes = new Set(countries.data.map((c) => c.code))
-    for (const o of latestData) {
-      if (countryCodes.has(o.countryCode) && o.value !== null) {
-        countryObservations.set(o.countryCode, o)
-      }
-    }
-  }
+  const countryObservations =
+    countries.status === 'success' && latestData
+      ? toCountryObservations(latestData, countries.data)
+      : new Map<string, Observation>()
 
   const keplerDataset = useMemo(
     () => buildKeplerDataset(countries.status === 'success' ? countries.data : [], countryObservations),

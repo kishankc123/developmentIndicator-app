@@ -3,7 +3,8 @@ import type { Observation } from '../types/worldBank'
 import { toChartRows } from './chartRows'
 import { buildColorScale } from './colorScale'
 import { mapboxToWorldBankCode, worldBankToMapboxCode } from './countryCode'
-import { buildBarRows, parseToolResult } from './chartData'
+import { CHAT_STORAGE_KEY, loadHistory, saveHistory, trimHistory } from './chatHistory'
+import { buildBarRows, parseToolResult, toCountryObservations } from './chartData'
 import { findCountry } from './countryLookup'
 import { buildKeplerDataset } from './keplerData'
 import { buildFillColorExpression, buildSelectedFilter } from './mapExpressions'
@@ -201,5 +202,94 @@ describe('parseToolResult', () => {
     expect(parseToolResult<{ a: number }>('{"a":1}')).toEqual({ a: 1 })
     expect(parseToolResult(undefined)).toBeUndefined()
     expect(parseToolResult('{oops')).toBeUndefined()
+  })
+})
+
+describe('trimHistory', () => {
+  const m = (id: string, role: string) => ({ id, role })
+
+  it('returns everything when under the limit', () => {
+    const history = [m('1', 'user'), m('2', 'assistant')]
+    expect(trimHistory(history, 10)).toEqual(history)
+  })
+  it('keeps only the most recent messages', () => {
+    const history = [m('1', 'user'), m('2', 'assistant'), m('3', 'user'), m('4', 'assistant')]
+    expect(trimHistory(history, 2).map((x) => x.id)).toEqual(['3', '4'])
+  })
+  it('never starts mid-turn: a cut that lands on a tool result moves on to the next user message', () => {
+    const history = [
+      m('1', 'user'),
+      m('2', 'assistant'), // requested the tool
+      m('3', 'tool'), // its result
+      m('4', 'assistant'),
+      m('5', 'user'),
+      m('6', 'assistant'),
+    ]
+    // Limit 4 would start at the tool result (3); it must skip to the user message (5).
+    expect(trimHistory(history, 4).map((x) => x.id)).toEqual(['5', '6'])
+  })
+  it('returns an empty history when no user message remains in the window', () => {
+    expect(trimHistory([m('1', 'user'), m('2', 'assistant'), m('3', 'tool')], 2)).toEqual([])
+  })
+})
+
+describe('chat history storage', () => {
+  const memory = () => {
+    const data = new Map<string, string>()
+    return {
+      getItem: (k: string) => data.get(k) ?? null,
+      setItem: (k: string, v: string) => void data.set(k, v),
+      removeItem: (k: string) => void data.delete(k),
+    }
+  }
+
+  it('round-trips messages', () => {
+    const storage = memory()
+    saveHistory(storage, [{ id: '1', role: 'user', content: 'hi' }])
+    expect(loadHistory(storage)).toEqual([{ id: '1', role: 'user', content: 'hi' }])
+  })
+  it('removes the saved entry when the history is empty', () => {
+    const storage = memory()
+    saveHistory(storage, [{ id: '1', role: 'user' }])
+    saveHistory(storage, [])
+    expect(storage.getItem(CHAT_STORAGE_KEY)).toBeNull()
+  })
+  it('treats malformed or tampered storage as an empty history', () => {
+    const storage = memory()
+    storage.setItem(CHAT_STORAGE_KEY, '{not json')
+    expect(loadHistory(storage)).toEqual([])
+    storage.setItem(CHAT_STORAGE_KEY, JSON.stringify({ not: 'an array' }))
+    expect(loadHistory(storage)).toEqual([])
+    storage.setItem(CHAT_STORAGE_KEY, JSON.stringify([{ id: '1', role: 'user' }, 42, { id: 3 }, null]))
+    expect(loadHistory(storage)).toEqual([{ id: '1', role: 'user' }])
+  })
+  it('does not throw when storage is missing or failing', () => {
+    expect(loadHistory(undefined)).toEqual([])
+    expect(() => saveHistory(undefined, [{ id: '1', role: 'user' }])).not.toThrow()
+    const broken = {
+      setItem: () => {
+        throw new Error('quota')
+      },
+      removeItem: () => {},
+    }
+    expect(() => saveHistory(broken, [{ id: '1', role: 'user' }])).not.toThrow()
+  })
+})
+
+describe('toCountryObservations', () => {
+  const country = (code: string) => ({
+    code,
+    name: code,
+    region: 'R',
+    incomeLevel: 'I',
+    latitude: null,
+    longitude: null,
+  })
+  it('keeps real countries with a value and drops aggregates and empty readings', () => {
+    const result = toCountryObservations(
+      [obs('AAA', 2020, 1), obs('WLD', 2020, 5), obs('BBB', 2020, null), obs('CCC', 2021, 3)],
+      [country('AAA'), country('BBB'), country('CCC')],
+    )
+    expect([...result.keys()]).toEqual(['AAA', 'CCC'])
   })
 })

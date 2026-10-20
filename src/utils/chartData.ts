@@ -82,3 +82,22 @@ export function parseToolResult<T>(result: string | undefined): T | undefined {
     return undefined
   }
 }
+
+/**
+ * Keeps the latest reading per real country (no regional aggregates such as "World") that
+ * has a value, keyed by ISO3 code. Shared by the dashboard and the chat tools so both agree
+ * on what "a country with data" means.
+ */
+export function toCountryObservations(
+  observations: readonly Observation[],
+  countries: readonly Country[],
+): Map<string, Observation> {
+  const codes = new Set(countries.map((c) => c.code))
+  const result = new Map<string, Observation>()
+  for (const observation of observations) {
+    if (codes.has(observation.countryCode) && observation.value !== null) {
+      result.set(observation.countryCode, observation)
+    }
+  }
+  return result
+}
