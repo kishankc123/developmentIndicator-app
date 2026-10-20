@@ -3,6 +3,9 @@ import type { Observation } from '../types/worldBank'
 import { toChartRows } from './chartRows'
 import { buildColorScale } from './colorScale'
 import { mapboxToWorldBankCode, worldBankToMapboxCode } from './countryCode'
+import { CHAT_STORAGE_KEY, loadHistory, saveHistory, trimHistory } from './chatHistory'
+import { buildBarRows, parseToolResult, toCountryObservations } from './chartData'
+import { findCountry } from './countryLookup'
 import { buildKeplerDataset } from './keplerData'
 import { buildFillColorExpression, buildSelectedFilter } from './mapExpressions'
 import { formatValue } from './format'
@@ -131,5 +134,162 @@ describe('buildKeplerDataset', () => {
     expect(rows).toHaveLength(1)
     expect(rows[0]).toEqual(['AAA', 'AAA', 'R', 'I', 2020, 5, 1, 2])
     expect(rows[0]).toHaveLength(fields.length)
+  })
+})
+
+describe('findCountry', () => {
+  const countries = [
+    { code: 'NPL', name: 'Nepal', region: 'R', incomeLevel: 'I', latitude: null, longitude: null },
+    { code: 'USA', name: 'United States', region: 'R', incomeLevel: 'I', latitude: null, longitude: null },
+    { code: 'ARE', name: 'United Arab Emirates', region: 'R', incomeLevel: 'I', latitude: null, longitude: null },
+  ]
+  it('matches ISO3 code and exact name ignoring case', () => {
+    expect(findCountry('npl', countries)?.code).toBe('NPL')
+    expect(findCountry('  Nepal ', countries)?.code).toBe('NPL')
+  })
+  it('matches a unique partial name', () => {
+    expect(findCountry('states', countries)?.code).toBe('USA')
+  })
+  it('refuses ambiguous or unknown text instead of guessing', () => {
+    expect(findCountry('united', countries)).toBeUndefined()
+    expect(findCountry('atlantis', countries)).toBeUndefined()
+    expect(findCountry('', countries)).toBeUndefined()
+  })
+})
+
+describe('buildBarRows', () => {
+  const countries = ['AAA', 'BBB', 'CCC', 'DDD'].map((code) => ({
+    code,
+    name: `Country ${code}`,
+    region: 'R',
+    incomeLevel: 'I',
+    latitude: null,
+    longitude: null,
+  }))
+  const observations = new Map([
+    ['AAA', obs('AAA', 2020, 10)],
+    ['BBB', obs('BBB', 2021, 30)],
+    ['CCC', obs('CCC', 2022, 20)],
+    ['DDD', obs('DDD', 2022, null)],
+  ])
+
+  it('ranks the highest values first by default and skips countries without data', () => {
+    const { rows } = buildBarRows(observations, countries, { top: 2 })
+    expect(rows.map((r) => r.code)).toEqual(['BBB', 'CCC'])
+  })
+  it('ranks the lowest values but still displays highest first', () => {
+    const { rows } = buildBarRows(observations, countries, { top: 2, order: 'lowest' })
+    expect(rows.map((r) => r.code)).toEqual(['CCC', 'AAA'])
+  })
+  it('takes named countries from the dashboard data and reports the ones it cannot chart', () => {
+    const { rows, unresolved } = buildBarRows(observations, countries, {
+      names: ['Country AAA', 'bbb', 'Country DDD', 'Atlantis', 'AAA'],
+    })
+    expect(rows.map((r) => [r.code, r.value, r.year])).toEqual([
+      ['BBB', 30, 2021],
+      ['AAA', 10, 2020],
+    ])
+    expect(unresolved).toEqual(['Country DDD', 'Atlantis'])
+  })
+  it('clamps the ranking size', () => {
+    expect(buildBarRows(observations, countries, { top: 0 }).rows).toHaveLength(1)
+    expect(buildBarRows(observations, countries, { top: 99 }).rows).toHaveLength(3)
+  })
+})
+
+describe('parseToolResult', () => {
+  it('parses JSON and returns undefined for missing or malformed input', () => {
+    expect(parseToolResult<{ a: number }>('{"a":1}')).toEqual({ a: 1 })
+    expect(parseToolResult(undefined)).toBeUndefined()
+    expect(parseToolResult('{oops')).toBeUndefined()
+  })
+})
+
+describe('trimHistory', () => {
+  const m = (id: string, role: string) => ({ id, role })
+
+  it('returns everything when under the limit', () => {
+    const history = [m('1', 'user'), m('2', 'assistant')]
+    expect(trimHistory(history, 10)).toEqual(history)
+  })
+  it('keeps only the most recent messages', () => {
+    const history = [m('1', 'user'), m('2', 'assistant'), m('3', 'user'), m('4', 'assistant')]
+    expect(trimHistory(history, 2).map((x) => x.id)).toEqual(['3', '4'])
+  })
+  it('never starts mid-turn: a cut that lands on a tool result moves on to the next user message', () => {
+    const history = [
+      m('1', 'user'),
+      m('2', 'assistant'), // requested the tool
+      m('3', 'tool'), // its result
+      m('4', 'assistant'),
+      m('5', 'user'),
+      m('6', 'assistant'),
+    ]
+    // Limit 4 would start at the tool result (3); it must skip to the user message (5).
+    expect(trimHistory(history, 4).map((x) => x.id)).toEqual(['5', '6'])
+  })
+  it('returns an empty history when no user message remains in the window', () => {
+    expect(trimHistory([m('1', 'user'), m('2', 'assistant'), m('3', 'tool')], 2)).toEqual([])
+  })
+})
+
+describe('chat history storage', () => {
+  const memory = () => {
+    const data = new Map<string, string>()
+    return {
+      getItem: (k: string) => data.get(k) ?? null,
+      setItem: (k: string, v: string) => void data.set(k, v),
+      removeItem: (k: string) => void data.delete(k),
+    }
+  }
+
+  it('round-trips messages', () => {
+    const storage = memory()
+    saveHistory(storage, [{ id: '1', role: 'user', content: 'hi' }])
+    expect(loadHistory(storage)).toEqual([{ id: '1', role: 'user', content: 'hi' }])
+  })
+  it('removes the saved entry when the history is empty', () => {
+    const storage = memory()
+    saveHistory(storage, [{ id: '1', role: 'user' }])
+    saveHistory(storage, [])
+    expect(storage.getItem(CHAT_STORAGE_KEY)).toBeNull()
+  })
+  it('treats malformed or tampered storage as an empty history', () => {
+    const storage = memory()
+    storage.setItem(CHAT_STORAGE_KEY, '{not json')
+    expect(loadHistory(storage)).toEqual([])
+    storage.setItem(CHAT_STORAGE_KEY, JSON.stringify({ not: 'an array' }))
+    expect(loadHistory(storage)).toEqual([])
+    storage.setItem(CHAT_STORAGE_KEY, JSON.stringify([{ id: '1', role: 'user' }, 42, { id: 3 }, null]))
+    expect(loadHistory(storage)).toEqual([{ id: '1', role: 'user' }])
+  })
+  it('does not throw when storage is missing or failing', () => {
+    expect(loadHistory(undefined)).toEqual([])
+    expect(() => saveHistory(undefined, [{ id: '1', role: 'user' }])).not.toThrow()
+    const broken = {
+      setItem: () => {
+        throw new Error('quota')
+      },
+      removeItem: () => {},
+    }
+    expect(() => saveHistory(broken, [{ id: '1', role: 'user' }])).not.toThrow()
+  })
+})
+
+describe('toCountryObservations', () => {
+  const country = (code: string) => ({
+    code,
+    name: code,
+    region: 'R',
+    incomeLevel: 'I',
+    latitude: null,
+    longitude: null,
+  })
+  it('keeps real countries with a value and drops aggregates and empty readings', () => {
+    const result = toCountryObservations(
+      [obs('AAA', 2020, 1), obs('WLD', 2020, 5), obs('BBB', 2020, null), obs('CCC', 2021, 3)],
+      [country('AAA'), country('BBB'), country('CCC')],
+    )
+    expect([...result.keys()]).toEqual(['AAA', 'CCC'])
   })
 })

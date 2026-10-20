@@ -1,0 +1,9 @@
+.comparison-bar-chart {
+  width: 100%;
+  min-width: 0;
+}
+
+.comparison-bar-chart__empty {
+  margin: 0;
+  color: var(--color-muted);
+}
