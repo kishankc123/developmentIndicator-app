@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest'
 import type { Observation } from '../types/worldBank'
 import { toChartRows } from './chartRows'
 import { buildColorScale } from './colorScale'
-import { featureIdToIso3 } from './countryCode'
+import { mapboxToWorldBankCode, worldBankToMapboxCode } from './countryCode'
+import { buildFillColorExpression, buildSelectedFilter } from './mapExpressions'
 import { formatValue } from './format'
 import { summarize } from './stats'
 
@@ -23,14 +24,44 @@ describe('formatValue', () => {
   })
 })
 
-describe('featureIdToIso3', () => {
-  it('maps ISO numeric ids from the map to World Bank ISO3 codes', () => {
-    expect(featureIdToIso3('524')).toBe('NPL')
-    expect(featureIdToIso3(840)).toBe('USA')
+describe('country code translation', () => {
+  it('passes ordinary codes through unchanged', () => {
+    expect(worldBankToMapboxCode('NPL')).toBe('NPL')
+    expect(mapboxToWorldBankCode('USA')).toBe('USA')
   })
-  it('returns undefined when there is no id or no match', () => {
-    expect(featureIdToIso3(undefined)).toBeUndefined()
-    expect(featureIdToIso3('000')).toBeUndefined()
+  it('translates Kosovo between World Bank (XKX) and Mapbox (XKS)', () => {
+    expect(worldBankToMapboxCode('XKX')).toBe('XKS')
+    expect(mapboxToWorldBankCode('XKS')).toBe('XKX')
+  })
+  it('returns undefined for features without a code', () => {
+    expect(mapboxToWorldBankCode(undefined)).toBeUndefined()
+    expect(mapboxToWorldBankCode('')).toBeUndefined()
+  })
+})
+
+describe('map expressions', () => {
+  const scale = buildColorScale([1, 2, 3, 4], ['low', 'high'])
+  it('groups countries by colour in a match expression with a no-data fallback', () => {
+    const map = new Map([
+      ['AAA', obs('AAA', 2020, 1)],
+      ['BBB', obs('BBB', 2020, 2)],
+      ['XKX', obs('XKX', 2020, 4)],
+    ])
+    const expression = buildFillColorExpression(map, scale, 'grey') as unknown[]
+    expect(expression[0]).toBe('match')
+    expect(expression).toContainEqual(['AAA', 'BBB'])
+    expect(expression).toContainEqual(['XKS'])
+    expect(expression[expression.length - 1]).toBe('grey')
+  })
+  it('falls back to a plain colour when there is no data', () => {
+    expect(buildFillColorExpression(new Map(), null, 'grey')).toBe('grey')
+  })
+  it('wraps selected codes in a literal and translates them', () => {
+    expect(buildSelectedFilter(['USA', 'XKX'])).toEqual([
+      'in',
+      ['get', 'iso_3166_1_alpha_3'],
+      ['literal', ['USA', 'XKS']],
+    ])
   })
 })
 

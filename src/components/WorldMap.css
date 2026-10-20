@@ -4,28 +4,11 @@
   gap: 0.75rem;
 }
 
-.world-map__svg {
+.world-map__canvas {
   width: 100%;
-  height: auto;
-  display: block;
-}
-
-.world-map__country {
-  stroke: var(--color-surface);
-  stroke-width: 0.4;
-  outline: none;
-  cursor: pointer;
-  transition: opacity 0.15s;
-}
-
-.world-map__country:hover {
-  stroke: var(--color-text);
-  stroke-width: 1;
-}
-
-.world-map__country.is-selected {
-  stroke: var(--color-text);
-  stroke-width: 1.6;
+  height: clamp(320px, 55vw, 560px);
+  border-radius: 10px;
+  overflow: hidden;
 }
 
 .world-map__readout {
