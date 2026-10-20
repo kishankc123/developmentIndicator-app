@@ -45,7 +45,7 @@ interface WorldMapProps {
   selectedCodes: string[]
   /** Called with a country's ISO3 code when the user clicks it on the map. */
   onCountryClick: (code: string) => void
-  /** Mapbox public access token. Defaults to `VITE_MAPBOX_TOKEN`; override in tests or stories. */
+  /** Mapbox public access token. Defaults to `VITE_MAPBOX_PUBLIC_ACCESS`; override in tests or stories. */
   accessToken?: string
 }
 
@@ -148,7 +148,7 @@ export function WorldMap({
       // Tile errors are common and recoverable; only a rejected token is worth surfacing.
       const status = (event.error as { status?: number } | undefined)?.status
       if (status === 401 || status === 403) {
-        setError('Mapbox rejected the access token. Check VITE_MAPBOX_TOKEN.')
+        setError('Mapbox rejected the access token. Check VITE_MAPBOX_PUBLIC_ACCESS.')
       }
     })
 
@@ -180,7 +180,7 @@ export function WorldMap({
     return (
       <StatusMessage
         kind="error"
-        message="Map unavailable: add a public Mapbox token as VITE_MAPBOX_TOKEN in .env.local, then restart the dev server."
+        message="Map unavailable: add a public Mapbox token as VITE_MAPBOX_PUBLIC_ACCESS in .env.local, then restart the dev server."
       />
     )
   }

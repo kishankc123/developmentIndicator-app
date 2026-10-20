@@ -3,6 +3,7 @@ import type { Observation } from '../types/worldBank'
 import { toChartRows } from './chartRows'
 import { buildColorScale } from './colorScale'
 import { mapboxToWorldBankCode, worldBankToMapboxCode } from './countryCode'
+import { buildKeplerDataset } from './keplerData'
 import { buildFillColorExpression, buildSelectedFilter } from './mapExpressions'
 import { formatValue } from './format'
 import { summarize } from './stats'
@@ -105,5 +106,30 @@ describe('toChartRows', () => {
       { year: 2020, A: 1, B: null },
       { year: 2021, A: 2, B: 9 },
     ])
+  })
+})
+
+describe('buildKeplerDataset', () => {
+  const country = (code: string, latitude: number | null, longitude: number | null) => ({
+    code,
+    name: code,
+    region: 'R',
+    incomeLevel: 'I',
+    latitude,
+    longitude,
+  })
+  it('keeps only countries that have both a value and a location', () => {
+    const observations = new Map([
+      ['AAA', obs('AAA', 2020, 5)],
+      ['BBB', obs('BBB', 2020, 6)],
+      ['CCC', obs('CCC', 2020, null)],
+    ])
+    const { rows, fields } = buildKeplerDataset(
+      [country('AAA', 1, 2), country('BBB', null, null), country('CCC', 3, 4), country('DDD', 5, 6)],
+      observations,
+    )
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toEqual(['AAA', 'AAA', 'R', 'I', 2020, 5, 1, 2])
+    expect(rows[0]).toHaveLength(fields.length)
   })
 })

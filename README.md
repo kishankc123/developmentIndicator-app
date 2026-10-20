@@ -44,3 +44,12 @@ GDP per capita, GDP growth, inflation, unemployment, GNI per capita, Gini.
 - TypeScript is pinned to 6.0.x because `typescript-eslint` 8.72 does not yet accept TypeScript 7. Revisit when it does.
 - Not yet done: Playwright end-to-end tests; keyboard access to map countries (the country dropdown is the keyboard route); live verification of the Mapbox layers needs a token.
 - Mapbox GL needs a token, and usage is billed by Mapbox beyond its free tier. Use a public token restricted to your domains.
+
+## Kepler.gl panel
+- "Explore" panel: `KeplerMap` plots one point per country capital (World Bank capital coordinates), sized and coloured by the selected indicator. Countries with no value or no coordinates are skipped (`utils/keplerData.ts`). Layer styling lives in `config/keplerConfig.ts`.
+- Kepler is an **alpha** (3.3.0-alpha.16, the npm `latest` tag) and weighs ~7 MB in its own lazy chunk; `node_modules` grew by ~1.3 GB.
+- It has its own Redux store, created inside `KeplerMap`, so the rest of the app does not use Redux.
+- Workarounds in `vite.config.ts` / `package.json`, to revisit on every Kepler upgrade:
+  - `resolve.alias.assert` + `define['process.env.NODE_DEBUG']`: Kepler calls Node's `assert`, which Vite stubs out in the browser.
+  - `overrides` pins all `@deck.gl/*` to 9.3.11: Kepler's own ranges let `widgets` float to 9.4.0, which needs a newer core and breaks the production build.
+- The instance is registered (`registerEntry`) before data is dispatched because Kepler silently drops actions sent before its component mounts.
