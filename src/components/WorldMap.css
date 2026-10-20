@@ -1,0 +1,36 @@
+.world-map {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.world-map__svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.world-map__country {
+  stroke: var(--color-surface);
+  stroke-width: 0.4;
+  outline: none;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.world-map__country:hover {
+  stroke: var(--color-text);
+  stroke-width: 1;
+}
+
+.world-map__country.is-selected {
+  stroke: var(--color-text);
+  stroke-width: 1.6;
+}
+
+.world-map__readout {
+  margin: 0;
+  min-height: 1.4em;
+  font-size: 0.9rem;
+  font-weight: 550;
+}

@@ -1,121 +1,151 @@
 import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
+import { AppHeader } from './components/AppHeader'
+import { CountrySelector } from './components/CountrySelector'
+import { IndicatorSelector } from './components/IndicatorSelector'
+import { Panel } from './components/Panel'
+import { StatCard } from './components/StatCard'
+import { StatusMessage } from './components/StatusMessage'
+import { TrendChart, type TrendSeries } from './components/TrendChart'
+import { WorldMap } from './components/WorldMap'
+import { INDICATORS } from './config/indicators'
+import { DEFAULT_COUNTRY_CODES, MAX_SELECTED_COUNTRIES, SERIES_COLORS } from './config/theme'
+import { useCountries } from './hooks/useCountries'
+import { useIndicator } from './hooks/useIndicator'
+import { useTrend } from './hooks/useTrend'
+import type { Observation } from './types/worldBank'
+import { formatValue } from './utils/format'
+import { summarize } from './utils/stats'
 import './App.css'
 
+/** Dashboard root: owns the selected indicator and countries and wires data to panels. */
 function App() {
-  const [count, setCount] = useState(0)
+  const [indicatorId, setIndicatorId] = useState(INDICATORS[0].id)
+  const [selectedCodes, setSelectedCodes] = useState(DEFAULT_COUNTRY_CODES)
+
+  const indicator = INDICATORS.find((i) => i.id === indicatorId) ?? INDICATORS[0]
+  const countries = useCountries()
+  const latest = useIndicator(indicator.id)
+  const trend = useTrend(indicator.id, selectedCodes)
+
+  /** Adds a country, dropping the oldest selection if the comparison is full. */
+  const addCountry = (code: string) =>
+    setSelectedCodes((codes) =>
+      codes.includes(code) ? codes : [...codes, code].slice(-MAX_SELECTED_COUNTRIES),
+    )
+  /** Removes a country from the comparison. */
+  const removeCountry = (code: string) =>
+    setSelectedCodes((codes) => codes.filter((c) => c !== code))
+  /** Map click: toggles the clicked country in the comparison. */
+  const toggleCountry = (code: string) =>
+    selectedCodes.includes(code) ? removeCountry(code) : addCountry(code)
+
+  // The latest-value call also returns aggregates (e.g. "World"); keep only real countries
+  // that have a value, keyed by ISO3 code for the map join.
+  const countryObservations = new Map<string, Observation>()
+  if (countries.status === 'success' && latest.status === 'success') {
+    const countryCodes = new Set(countries.data.map((c) => c.code))
+    for (const o of latest.data) {
+      if (countryCodes.has(o.countryCode) && o.value !== null) {
+        countryObservations.set(o.countryCode, o)
+      }
+    }
+  }
+
+  // Colours follow selection order so chips, lines and (later) map outlines agree.
+  const colors = Object.fromEntries(selectedCodes.map((c, i) => [c, SERIES_COLORS[i]]))
+  const nameOf = (code: string) =>
+    countries.status === 'success'
+      ? (countries.data.find((c) => c.code === code)?.name ?? code)
+      : code
+  const series: TrendSeries[] = selectedCodes.map((code) => ({
+    code,
+    name: nameOf(code),
+    color: colors[code],
+  }))
+
+  const focusCode = selectedCodes[selectedCodes.length - 1]
+  const focus = focusCode ? countryObservations.get(focusCode) : undefined
+  const summary = summarize([...countryObservations.values()])
+  const show = (o: Observation | undefined) =>
+    o?.value != null ? formatValue(o.value, indicator.format) : '—'
+
+  const mapLoading = countries.status === 'loading' || latest.status === 'loading'
+  const mapError = countries.status === 'error' ? countries : latest.status === 'error' ? latest : null
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <div className="app">
+      <AppHeader />
+      <IndicatorSelector
+        indicators={INDICATORS}
+        selectedId={indicator.id}
+        onSelect={setIndicatorId}
+      />
 
-      <div className="ticks"></div>
+      <div className="app__stats">
+        <StatCard
+          label={focusCode ? nameOf(focusCode) : 'Selected country'}
+          value={show(focus)}
+          detail={focus ? `Latest: ${focus.year}` : 'No data for this indicator'}
+        />
+        <StatCard
+          label="Highest"
+          value={show(summary?.highest)}
+          detail={summary ? `${summary.highest.countryName}, ${summary.highest.year}` : undefined}
+        />
+        <StatCard
+          label="Median country"
+          value={summary ? formatValue(summary.median, indicator.format) : '—'}
+          detail={summary ? `Across ${summary.count} countries` : undefined}
+        />
+      </div>
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+      <Panel title={indicator.label} subtitle={indicator.description}>
+        {mapError ? (
+          <StatusMessage kind="error" message={`Could not load data: ${mapError.error.message}`} />
+        ) : mapLoading ? (
+          <StatusMessage kind="loading" message="Loading map data…" />
+        ) : (
+          <WorldMap
+            observations={countryObservations}
+            format={indicator.format}
+            selectedCodes={selectedCodes}
+            onCountryClick={toggleCountry}
+          />
+        )}
+        <p className="app__footnote">
+          Each country shows its most recent available year, so years differ between countries.
+        </p>
+      </Panel>
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+      <Panel
+        title="Compare over time"
+        subtitle={`${indicator.label}, last 25 years`}
+        actions={
+          countries.status === 'success' && (
+            <CountrySelector
+              countries={countries.data}
+              selectedCodes={selectedCodes}
+              colors={colors}
+              max={MAX_SELECTED_COUNTRIES}
+              onAdd={addCountry}
+              onRemove={removeCountry}
+            />
+          )
+        }
+      >
+        {trend.status === 'error' ? (
+          <StatusMessage kind="error" message={`Could not load trend: ${trend.error.message}`} />
+        ) : trend.status === 'loading' ? (
+          <StatusMessage kind="loading" message="Loading trend…" />
+        ) : (
+          <TrendChart observations={trend.data} series={series} format={indicator.format} />
+        )}
+      </Panel>
+
+      <footer className="app__footer">
+        Source: World Bank Open Data (World Development Indicators).
+      </footer>
+    </div>
   )
 }
 
