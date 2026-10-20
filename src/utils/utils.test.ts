@@ -3,6 +3,7 @@ import type { Observation } from '../types/worldBank'
 import { toChartRows } from './chartRows'
 import { buildColorScale } from './colorScale'
 import { mapboxToWorldBankCode, worldBankToMapboxCode } from './countryCode'
+import { buildBarRows, parseToolResult } from './chartData'
 import { findCountry } from './countryLookup'
 import { buildKeplerDataset } from './keplerData'
 import { buildFillColorExpression, buildSelectedFilter } from './mapExpressions'
@@ -152,5 +153,53 @@ describe('findCountry', () => {
     expect(findCountry('united', countries)).toBeUndefined()
     expect(findCountry('atlantis', countries)).toBeUndefined()
     expect(findCountry('', countries)).toBeUndefined()
+  })
+})
+
+describe('buildBarRows', () => {
+  const countries = ['AAA', 'BBB', 'CCC', 'DDD'].map((code) => ({
+    code,
+    name: `Country ${code}`,
+    region: 'R',
+    incomeLevel: 'I',
+    latitude: null,
+    longitude: null,
+  }))
+  const observations = new Map([
+    ['AAA', obs('AAA', 2020, 10)],
+    ['BBB', obs('BBB', 2021, 30)],
+    ['CCC', obs('CCC', 2022, 20)],
+    ['DDD', obs('DDD', 2022, null)],
+  ])
+
+  it('ranks the highest values first by default and skips countries without data', () => {
+    const { rows } = buildBarRows(observations, countries, { top: 2 })
+    expect(rows.map((r) => r.code)).toEqual(['BBB', 'CCC'])
+  })
+  it('ranks the lowest values but still displays highest first', () => {
+    const { rows } = buildBarRows(observations, countries, { top: 2, order: 'lowest' })
+    expect(rows.map((r) => r.code)).toEqual(['CCC', 'AAA'])
+  })
+  it('takes named countries from the dashboard data and reports the ones it cannot chart', () => {
+    const { rows, unresolved } = buildBarRows(observations, countries, {
+      names: ['Country AAA', 'bbb', 'Country DDD', 'Atlantis', 'AAA'],
+    })
+    expect(rows.map((r) => [r.code, r.value, r.year])).toEqual([
+      ['BBB', 30, 2021],
+      ['AAA', 10, 2020],
+    ])
+    expect(unresolved).toEqual(['Country DDD', 'Atlantis'])
+  })
+  it('clamps the ranking size', () => {
+    expect(buildBarRows(observations, countries, { top: 0 }).rows).toHaveLength(1)
+    expect(buildBarRows(observations, countries, { top: 99 }).rows).toHaveLength(3)
+  })
+})
+
+describe('parseToolResult', () => {
+  it('parses JSON and returns undefined for missing or malformed input', () => {
+    expect(parseToolResult<{ a: number }>('{"a":1}')).toEqual({ a: 1 })
+    expect(parseToolResult(undefined)).toBeUndefined()
+    expect(parseToolResult('{oops')).toBeUndefined()
   })
 })

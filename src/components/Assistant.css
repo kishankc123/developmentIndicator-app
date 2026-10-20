@@ -1,0 +1,33 @@
+/*
+ * A2UI's built-in Card hard-codes a white inline background (no theme setting exists for it).
+ * In dark mode its text is near-white, so the card becomes unreadable. Restyle it, only
+ * inside the chat and only while the `.dark` class (see useDarkClassFromOs) is active.
+ * `!important` is needed to beat the inline style.
+ */
+.dark .a2ui-surface div[style*="background-color: rgb(255, 255, 255)"] {
+  background-color: var(--color-surface) !important;
+  border-color: var(--color-border) !important;
+  box-shadow: none !important;
+}
+
+/* Charts shown in the chat (show_bar_chart / show_trend_chart). */
+.chat-chart {
+  margin: 0.5rem 0;
+  padding: 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.chat-chart__title {
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.chat-chart__note {
+  margin: 0.5rem 0 0;
+  font-size: 0.75rem;
+  color: var(--color-muted);
+}

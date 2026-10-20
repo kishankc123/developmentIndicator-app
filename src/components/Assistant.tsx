@@ -5,11 +5,18 @@ import {
   useFrontendTool,
 } from '@copilotkit/react-core/v2'
 import '@copilotkit/react-core/v2/styles.css'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { z } from 'zod'
+import { fetchSeries } from '../api/worldBank'
 import type { IndicatorDefinition } from '../config/indicators'
+import { SERIES_COLORS, TREND_YEARS } from '../config/theme'
 import type { Country, Observation } from '../types/worldBank'
+import { buildBarRows, parseToolResult, type BarRow } from '../utils/chartData'
 import { findCountry } from '../utils/countryLookup'
+import type { ValueFormat } from '../utils/format'
+import { ComparisonBarChart } from './ComparisonBarChart'
+import { TrendChart, type TrendSeries } from './TrendChart'
+import './Assistant.css'
 
 /** Props for {@link Assistant}. */
 interface AssistantProps {
@@ -52,6 +59,36 @@ function useDarkClassFromOs() {
   }, [])
 }
 
+/** What `show_bar_chart` returns to the chart renderer (and to the model). */
+interface BarPayload {
+  title: string
+  indicatorLabel: string
+  format: ValueFormat
+  rows: BarRow[]
+  unresolved: string[]
+}
+
+/** What `show_trend_chart` returns to the chart renderer (and to the model). */
+interface TrendPayload {
+  title: string
+  indicatorLabel: string
+  format: ValueFormat
+  series: TrendSeries[]
+  observations: Observation[]
+  unresolved: string[]
+}
+
+/** Title and body of a chart shown inside the chat. */
+function ChatChart({ title, note, children }: { title: string; note?: string; children: React.ReactNode }) {
+  return (
+    <figure className="chat-chart">
+      <figcaption className="chat-chart__title">{title}</figcaption>
+      {children}
+      {note && <p className="chat-chart__note">{note}</p>}
+    </figure>
+  )
+}
+
 /** Registers what the model may see (context) and do (tools) for the current dashboard. */
 function AssistantBridge({
   indicators,
@@ -64,6 +101,13 @@ function AssistantBridge({
   onRemoveCountry,
 }: AssistantProps) {
   useDarkClassFromOs()
+
+  // Chart handlers run long after registration; read the newest data through a ref so the
+  // tools need not be re-registered each time the dashboard rebuilds its country map.
+  const latest = useRef({ indicator, countries, observations })
+  useEffect(() => {
+    latest.current = { indicator, countries, observations }
+  })
 
   const nameOf = (code: string) => countries.find((c) => c.code === code)?.name ?? code
 
@@ -142,6 +186,109 @@ function AssistantBridge({
       },
     },
     [countries, selectedCodes, onRemoveCountry],
+  )
+
+  useFrontendTool(
+    {
+      name: 'show_bar_chart',
+      description:
+        'Show a horizontal bar chart in the chat comparing the CURRENT indicator across countries. Use it for comparisons ("compare X and Y") and rankings ("top 5"). Pass country names, or top/order for a ranking. The chart is drawn from the dashboard data, so do not pass or repeat values.',
+      parameters: z.object({
+        title: z.string().describe('Short chart title, e.g. "GDP per capita: top 5 countries"'),
+        countries: z
+          .array(z.string())
+          .max(15)
+          .optional()
+          .describe('Country names or ISO3 codes to compare. Omit for a ranking.'),
+        top: z.number().int().min(1).max(15).optional().describe('How many countries to rank (default 5)'),
+        order: z.enum(['highest', 'lowest']).optional().describe('Ranking direction (default highest)'),
+      }),
+      handler: async ({ title, countries: names, top, order }) => {
+        const { indicator: current, countries: all, observations: values } = latest.current
+        const { rows, unresolved } = buildBarRows(values, all, {
+          names: names as string[] | undefined,
+          top: top as number | undefined,
+          order: order as 'highest' | 'lowest' | undefined,
+        })
+        const payload: BarPayload = {
+          title: title as string,
+          indicatorLabel: current.label,
+          format: current.format,
+          rows,
+          unresolved,
+        }
+        return JSON.stringify(payload)
+      },
+      render: ({ result }) => {
+        const payload = parseToolResult<BarPayload>(result)
+        if (!payload) return <p className="chat-chart__note">Preparing chart…</p>
+        return (
+          <ChatChart
+            title={payload.title}
+            note={
+              payload.unresolved.length > 0
+                ? `No data for: ${payload.unresolved.join(', ')}. Each bar shows the country's latest year.`
+                : "Each bar shows the country's latest available year."
+            }
+          >
+            <ComparisonBarChart rows={payload.rows} format={payload.format} />
+          </ChatChart>
+        )
+      },
+    },
+    [],
+  )
+
+  useFrontendTool(
+    {
+      name: 'show_trend_chart',
+      description:
+        'Show a line chart in the chat of the CURRENT indicator over time for 1-4 countries. Use it when the user asks how something changed, trends, or history.',
+      parameters: z.object({
+        title: z.string().describe('Short chart title, e.g. "GDP per capita since 2000"'),
+        countries: z.array(z.string()).min(1).max(4).describe('Country names or ISO3 codes'),
+        years: z.number().int().min(5).max(40).optional().describe(`How many years back (default ${TREND_YEARS})`),
+      }),
+      handler: async ({ title, countries: names, years }) => {
+        const { indicator: current, countries: all } = latest.current
+        const unresolved: string[] = []
+        const matched: Country[] = []
+        for (const name of names as string[]) {
+          const match = findCountry(name, all)
+          if (match && !matched.includes(match)) matched.push(match)
+          else if (!match) unresolved.push(name)
+        }
+        const toYear = new Date().getFullYear()
+        const observations = await fetchSeries(
+          current.id,
+          matched.map((c) => c.code),
+          toYear - ((years as number | undefined) ?? TREND_YEARS),
+          toYear,
+        )
+        const payload: TrendPayload = {
+          title: title as string,
+          indicatorLabel: current.label,
+          format: current.format,
+          series: matched.map((c, i) => ({ code: c.code, name: c.name, color: SERIES_COLORS[i] })),
+          observations,
+          unresolved,
+        }
+        return JSON.stringify(payload)
+      },
+      render: ({ result }) => {
+        const payload = parseToolResult<TrendPayload>(result)
+        if (!payload) return <p className="chat-chart__note">Loading yearly data…</p>
+        return (
+          <ChatChart
+            title={payload.title}
+            note={payload.unresolved.length > 0 ? `Not found: ${payload.unresolved.join(', ')}.` : undefined}
+          >
+            <TrendChart observations={payload.observations} series={payload.series} format={payload.format} />
+          </ChatChart>
+        )
+      },
+    },
+    [],
   )
 
   return <CopilotSidebar defaultOpen={false} />
