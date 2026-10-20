@@ -13,16 +13,25 @@
   "dependencies": {
     "@fontsource-variable/open-sans": "^5.3.0",
     "@fontsource-variable/roboto-mono": "^5.3.0",
+    "@kepler.gl/actions": "^3.3.0-alpha.16",
+    "@kepler.gl/components": "^3.3.0-alpha.16",
+    "@kepler.gl/reducers": "^3.3.0-alpha.16",
+    "assert": "^2.1.0",
     "d3-scale": "^4.0.2",
+    "kepler.gl": "^3.3.0-alpha.16",
     "mapbox-gl": "^3.33.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-is": "^19.3.1",
-    "recharts": "^3.10.1"
+    "react-redux": "^9.3.0",
+    "recharts": "^3.10.1",
+    "redux": "^5.0.1",
+    "styled-components": "^6.6.0"
   },
   "devDependencies": {
     "@babel/core": "^7.29.7",
     "@eslint/js": "^10.0.1",
+    "@kepler.gl/types": "^3.3.0-alpha.16",
     "@rolldown/plugin-babel": "^0.2.4",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
@@ -44,5 +53,16 @@
     "typescript-eslint": "^8.71.2",
     "vite": "^8.3.4",
     "vitest": "^5.0.5"
+  },
+  "overrides": {
+    "@deck.gl/core": "9.3.11",
+    "@deck.gl/layers": "9.3.11",
+    "@deck.gl/extensions": "9.3.11",
+    "@deck.gl/geo-layers": "9.3.11",
+    "@deck.gl/mesh-layers": "9.3.11",
+    "@deck.gl/aggregation-layers": "9.3.11",
+    "@deck.gl/mapbox": "9.3.11",
+    "@deck.gl/react": "9.3.11",
+    "@deck.gl/widgets": "9.3.11"
   }
 }

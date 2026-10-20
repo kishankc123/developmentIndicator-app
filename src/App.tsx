@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from 'react'
+import { lazy, Suspense, useMemo, useState } from 'react'
 import { AppHeader } from './components/AppHeader'
 import { CountrySelector } from './components/CountrySelector'
 import { IndicatorSelector } from './components/IndicatorSelector'
@@ -13,11 +13,15 @@ import { useIndicator } from './hooks/useIndicator'
 import { useTrend } from './hooks/useTrend'
 import type { Observation } from './types/worldBank'
 import { formatValue } from './utils/format'
+import { buildKeplerDataset } from './utils/keplerData'
 import { summarize } from './utils/stats'
 import './App.css'
 
 // Lazy so the large Mapbox GL library loads as its own chunk, after the page shell renders.
 const WorldMap = lazy(() => import('./components/WorldMap').then((m) => ({ default: m.WorldMap })))
+
+// Kepler.gl is far larger than Mapbox GL alone, so it is its own lazy chunk too.
+const KeplerMap = lazy(() => import('./components/KeplerMap').then((m) => ({ default: m.KeplerMap })))
 
 /** Dashboard root: owns the selected indicator and countries and wires data to panels. */
 function App() {
@@ -55,6 +59,13 @@ function App() {
       }
     }
   }
+
+  const keplerDataset = useMemo(
+    () => buildKeplerDataset(countries.status === 'success' ? countries.data : [], countryObservations),
+    // countryObservations is rebuilt every render; its content only changes with these two inputs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [countries, latestData],
+  )
 
   // Colours follow selection order so chips, lines and (later) map outlines agree.
   const colors = Object.fromEntries(selectedCodes.map((c, i) => [c, SERIES_COLORS[i]]))
@@ -127,6 +138,17 @@ function App() {
           Each country shows its most recent available year, so years differ between countries.
         </p>
       </Panel>
+
+      {!mapLoading && !mapError && (
+        <Panel
+          title={`Explore: ${indicator.label}`}
+          subtitle="Kepler.gl: country capitals sized and coloured by value. Open the side panel to filter and restyle."
+        >
+          <Suspense fallback={<StatusMessage kind="loading" message="Loading Kepler.gl…" />}>
+            <KeplerMap dataset={keplerDataset} datasetLabel="Countries" />
+          </Suspense>
+        </Panel>
+      )}
 
       <Panel
         title="Compare over time"

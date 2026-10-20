@@ -9,9 +9,9 @@ import { StatCard } from './StatCard'
 import { StatusMessage } from './StatusMessage'
 
 const countries: Country[] = [
-  { code: 'NPL', name: 'Nepal', region: 'South Asia', incomeLevel: 'Lower middle income' },
-  { code: 'USA', name: 'United States', region: 'North America', incomeLevel: 'High income' },
-  { code: 'IND', name: 'India', region: 'South Asia', incomeLevel: 'Lower middle income' },
+  { code: 'NPL', name: 'Nepal', region: 'South Asia', incomeLevel: 'Lower middle income', latitude: null, longitude: null },
+  { code: 'USA', name: 'United States', region: 'North America', incomeLevel: 'High income', latitude: null, longitude: null },
+  { code: 'IND', name: 'India', region: 'South Asia', incomeLevel: 'Lower middle income', latitude: null, longitude: null },
 ]
 
 describe('StatCard', () => {

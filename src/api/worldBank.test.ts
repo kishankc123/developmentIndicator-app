@@ -24,12 +24,12 @@ describe('fetchCountries', () => {
     mockFetch([
       meta,
       [
-        { id: 'NPL', name: 'Nepal', region: { id: 'SAS', value: 'South Asia ' }, incomeLevel: { id: 'LMC', value: 'Lower middle income' } },
-        { id: 'ARB', name: 'Arab World', region: { id: 'NA', value: 'Aggregates' }, incomeLevel: { id: 'NA', value: 'Aggregates' } },
+        { id: 'NPL', name: 'Nepal', region: { id: 'SAS', value: 'South Asia ' }, incomeLevel: { id: 'LMC', value: 'Lower middle income' }, latitude: '27.6939', longitude: '85.3157' },
+        { id: 'ARB', name: 'Arab World', region: { id: 'NA', value: 'Aggregates' }, incomeLevel: { id: 'NA', value: 'Aggregates' }, latitude: '', longitude: '' },
       ],
     ])
     expect(await fetchCountries()).toEqual([
-      { code: 'NPL', name: 'Nepal', region: 'South Asia', incomeLevel: 'Lower middle income' },
+      { code: 'NPL', name: 'Nepal', region: 'South Asia', incomeLevel: 'Lower middle income', latitude: 27.6939, longitude: 85.3157 },
     ])
   })
 })

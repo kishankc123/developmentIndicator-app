@@ -31,6 +31,9 @@ export interface RawCountry {
   region: { id: string; value: string }
   incomeLevel: { id: string; value: string }
   capitalCity: string
+  // Capital-city coordinates as decimal strings; empty string when unknown.
+  latitude: string
+  longitude: string
 }
 
 /** Error payload the API returns with HTTP 200, e.g. for an invalid parameter. */
@@ -54,4 +57,8 @@ export interface Country {
   name: string
   region: string
   incomeLevel: string
+  /** Capital-city latitude in degrees, or null when the API has none. */
+  latitude: number | null
+  /** Capital-city longitude in degrees, or null when the API has none. */
+  longitude: number | null
 }

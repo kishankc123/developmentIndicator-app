@@ -1,0 +1,7 @@
+.kepler-map {
+  width: 100%;
+  height: 640px;
+  border-radius: 10px;
+  overflow: hidden;
+  position: relative;
+}
