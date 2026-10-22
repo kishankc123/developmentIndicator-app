@@ -1,6 +1,6 @@
 import react, { reactCompilerPreset } from '@vitejs/plugin-react'
 import babel from '@rolldown/plugin-babel'
-import { defineConfig } from 'vitest/config'
+import { configDefaults, defineConfig } from 'vitest/config'
 import { copilotDevPlugin } from './server/copilotDevPlugin.ts'
 
 // https://vite.dev/config/
@@ -20,5 +20,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
+    // Playwright specs live in e2e/ and run with `npm run test:e2e`.
+    exclude: [...configDefaults.exclude, 'e2e/**'],
   },
 })

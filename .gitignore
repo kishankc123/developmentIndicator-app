@@ -25,3 +25,9 @@ dist-ssr
 
 # Claude instructions and context
 CLAUDE/
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
