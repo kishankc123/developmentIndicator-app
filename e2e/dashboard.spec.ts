@@ -53,12 +53,31 @@ test.describe('dashboard', () => {
     await expect(highest).toContainText('85000.0%')
   })
 
+  test('shows life expectancy in years', async ({ page }) => {
+    await page.getByRole('radio', { name: 'Life expectancy' }).click()
+    await expect(page.getByRole('heading', { level: 2, name: 'Life expectancy', exact: true })).toBeVisible()
+    // Fixture value 85000 for the USA is not a real age; this checks the "years" unit and 1 decimal.
+    const highest = page.locator('.stat-card', { hasText: 'Highest' })
+    log(`"Highest" card for life expectancy: ${(await highest.innerText()).replace(/\n+/g, ' | ')}`)
+    await expect(highest).toContainText('85000.0 years')
+  })
+
+  test('shows population as an abbreviated count', async ({ page }) => {
+    await page.getByRole('radio', { name: 'Population' }).click()
+    await expect(page.getByRole('heading', { level: 2, name: 'Population', exact: true })).toBeVisible()
+    // Fixtures: USA 85000 → "85K"; median of [1400, 2500, 12600, 85000] = 7550 → "7.55K".
+    const cards = page.locator('.stat-card')
+    log(`stat cards for population: ${JSON.stringify((await cards.allInnerTexts()).map((t) => t.replace(/\n+/g, ' | ')))}`)
+    await expect(cards.filter({ hasText: 'Highest' })).toContainText('85K')
+    await expect(cards.filter({ hasText: 'Median country' })).toContainText('7.55K')
+  })
+
   test('lists every indicator grouped by topic', async ({ page }) => {
-    // config/indicators.ts: 2 topics (Economy, Prosperity), 6 indicators in total.
+    // config/indicators.ts: 3 topics (Economy, Prosperity, People), 8 indicators in total.
     log(`radio groups: ${await page.getByRole('radiogroup').count()}, indicators: ${await page.getByRole('radio').count()}`)
     log(`indicator labels: ${(await page.getByRole('radio').allInnerTexts()).join(', ')}`)
-    await expect(page.getByRole('radiogroup')).toHaveCount(2)
-    await expect(page.getByRole('radio')).toHaveCount(6)
+    await expect(page.getByRole('radiogroup')).toHaveCount(3)
+    await expect(page.getByRole('radio')).toHaveCount(8)
   })
 
   test('renders the trend chart with a legend entry per selected country', async ({ page }) => {

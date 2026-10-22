@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { INDICATORS } from '../config/indicators'
@@ -55,6 +55,18 @@ describe('IndicatorSelector', () => {
     expect(screen.getByRole('radio', { name: 'GDP per capita' })).toBeChecked()
     await userEvent.click(screen.getByRole('radio', { name: 'Inflation' }))
     expect(onSelect).toHaveBeenCalledWith('FP.CPI.TOTL.ZG')
+  })
+
+  it('groups the people indicators under their own topic', async () => {
+    const onSelect = vi.fn()
+    render(<IndicatorSelector indicators={INDICATORS} selectedId={INDICATORS[0].id} onSelect={onSelect} />)
+    const group = screen.getByRole('radiogroup', { name: 'People & quality of life' })
+    expect(within(group).getAllByRole('radio').map((r) => r.textContent)).toEqual([
+      'Life expectancy',
+      'Population',
+    ])
+    await userEvent.click(within(group).getByRole('radio', { name: 'Population' }))
+    expect(onSelect).toHaveBeenCalledWith('SP.POP.TOTL')
   })
 })
 

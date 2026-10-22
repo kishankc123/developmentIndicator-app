@@ -1,6 +1,6 @@
 # Development Indicator
 
-A dashboard of world development indicators (economy and prosperity first), built from World Bank open data.
+A dashboard of world development indicators (economy, prosperity and people), built from World Bank open data.
 
 ## Stack
 React 19, TypeScript, Vite (with React Compiler), Recharts, Mapbox GL JS, Vitest + React Testing Library.
@@ -33,7 +33,7 @@ src/
 
 ## Data
 Source: World Bank API v2 (no key needed). Indicators in `src/config/indicators.ts`:
-GDP per capita, GDP growth, inflation, unemployment, GNI per capita, Gini.
+GDP per capita, GDP growth, inflation, unemployment, GNI per capita, Gini, life expectancy, population. A new indicator needs only an entry there (plus a `ValueFormat` in `utils/format.ts` if it is a new kind of number); the selector, maps, chart and assistant all read that list.
 
 - The map uses each country's **most recent available value** (`mrnev=1`), so the year differs per country.
 - The map is Mapbox GL JS drawing the free `mapbox.country-boundaries-v1` vector tileset (source layer `country_boundaries`). Countries are joined to World Bank data on `iso_3166_1_alpha_3`; Kosovo is `XKS` in Mapbox but `XKX` in the World Bank API, translated in `utils/countryCode.ts`. Disputed/alternate-worldview polygons are filtered out.
@@ -42,7 +42,7 @@ GDP per capita, GDP growth, inflation, unemployment, GNI per capita, Gini.
 
 ## Notes
 - TypeScript is pinned to 6.0.x because `typescript-eslint` 8.72 does not yet accept TypeScript 7. Revisit when it does.
-- Not yet done: Playwright end-to-end tests; keyboard access to map countries (the country dropdown is the keyboard route); live verification of the Mapbox layers needs a token.
+- Not yet done: keyboard access to map countries (the country dropdown is the keyboard route); live verification of the Mapbox layers needs a token.
 - Mapbox GL needs a token, and usage is billed by Mapbox beyond its free tier. Use a public token restricted to your domains.
 
 ## Kepler.gl panel

@@ -25,6 +25,11 @@ describe('formatValue', () => {
     expect(formatValue(12000, 'usd', true)).toBe('$12K')
     expect(formatValue(2.345, 'percent')).toBe('2.3%')
     expect(formatValue(30, 'index')).toBe('30.0')
+    expect(formatValue(72.235, 'years')).toBe('72.2 years')
+    expect(formatValue(72.235, 'years', true)).toBe('72.2')
+    expect(formatValue(1463865525, 'count')).toBe('1.46B')
+    expect(formatValue(29618118, 'count', true)).toBe('29.6M')
+    expect(formatValue(980, 'count')).toBe('980')
   })
 })
 

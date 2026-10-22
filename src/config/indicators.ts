@@ -1,12 +1,13 @@
 import type { ValueFormat } from '../utils/format'
 
 /** Dashboard topic an indicator belongs to. */
-export type Topic = 'economy' | 'prosperity'
+export type Topic = 'economy' | 'prosperity' | 'people'
 
 /** Display name for each topic. */
 export const TOPIC_LABELS: Record<Topic, string> = {
   economy: 'Economy',
   prosperity: 'Prosperity',
+  people: 'People & quality of life',
 }
 
 /** An indicator the dashboard can show. */
@@ -63,5 +64,19 @@ export const INDICATORS: IndicatorDefinition[] = [
     topic: 'prosperity',
     format: 'index',
     description: 'Gini index: 0 is perfect equality, 100 is maximum inequality. Sparse coverage.',
+  },
+  {
+    id: 'SP.DYN.LE00.IN',
+    label: 'Life expectancy',
+    topic: 'people',
+    format: 'years',
+    description: 'Years a newborn would live if current mortality patterns stayed the same.',
+  },
+  {
+    id: 'SP.POP.TOTL',
+    label: 'Population',
+    topic: 'people',
+    format: 'count',
+    description: 'Total number of people living in the country.',
   },
 ]
