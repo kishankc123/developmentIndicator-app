@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main, production]
+  push:
+    branches: [main, production]
+
+# A newer push to the same branch/PR makes the older run obsolete.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Lint, typecheck, build, unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      # `build` runs `tsc -b` (typecheck for app, server and e2e) and then the Vite build.
+      - run: npm run build
+      - run: npm test
+
+  e2e:
+    name: Playwright end-to-end tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - run: npx playwright install --with-deps chromium
+      # Playwright builds and serves the production bundle itself (see playwright.config.ts).
+      - run: npm run test:e2e
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
+
+  # One stable status to require in branch protection, whatever jobs are added above.
+  ci-passed:
+    name: CI passed
+    if: ${{ always() }}
+    needs: [checks, e2e]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail unless every job succeeded
+        run: |
+          if [ "${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || contains(needs.*.result, 'skipped') }}" = "true" ]; then
+            echo "A required job did not succeed."; exit 1
+          fi
