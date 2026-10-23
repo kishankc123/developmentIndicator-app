@@ -25,3 +25,8 @@ dist-ssr
 
 # Claude instructions and context
 CLAUDE/
+
+# Playwright output, regenerated on every e2e run
+playwright-report/
+test-results/
+blob-report/
