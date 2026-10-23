@@ -14,7 +14,8 @@ test.describe('dashboard', () => {
     await expect(page.getByRole('heading', { level: 1, name: 'Development Indicator' })).toBeVisible()
 
     // The first entry in config/indicators.ts is selected on load.
-    const selected = page.getByRole('radio', { checked: true })
+    // Scoped to the indicator panel: the Kepler metric selector has radios of its own.
+    const selected = page.locator('#indicator-panel').getByRole('radio', { checked: true })
     log(`indicator selected on load: "${await selected.innerText()}"`)
     await expect(page.getByRole('radio', { name: 'GDP per capita' })).toHaveAttribute('aria-checked', 'true')
 
@@ -84,15 +85,16 @@ test.describe('dashboard', () => {
     }
     log(`theme tabs: ${(await page.getByRole('tab').allInnerTexts()).join(' | ')}`)
     await expect(page.getByRole('tab')).toHaveCount(3)
-    await expect(page.getByRole('radiogroup')).toHaveCount(1)
+    await expect(page.locator('#indicator-panel').getByRole('radiogroup')).toHaveCount(1)
 
+    const indicators = page.locator('#indicator-panel').getByRole('radio')
     for (const [theme, labels] of Object.entries(themes)) {
       await page.getByRole('tab', { name: theme }).click()
       await expect(page.getByRole('tab', { name: theme })).toHaveAttribute('aria-selected', 'true')
-      log(`${theme}: ${(await page.getByRole('radio').allInnerTexts()).join(', ')}`)
-      await expect(page.getByRole('radio')).toHaveText(labels)
+      log(`${theme}: ${(await indicators.allInnerTexts()).join(', ')}`)
+      await expect(indicators).toHaveText(labels)
       // The first indicator of the theme is selected when the theme is chosen.
-      await expect(page.getByRole('radio').first()).toHaveAttribute('aria-checked', 'true')
+      await expect(indicators.first()).toHaveAttribute('aria-checked', 'true')
     }
   })
 

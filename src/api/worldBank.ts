@@ -126,3 +126,24 @@ export async function fetchSeries(
     .filter((o): o is Observation => o !== null)
     .sort((a, b) => a.year - b.year)
 }
+
+/**
+ * Fetches a yearly series for every economy at once (one bulk request, a few pages).
+ * Aggregates are still included; filter against `fetchCountries`. Sorted oldest to newest.
+ */
+export async function fetchHistoryAll(
+  indicatorId: string,
+  fromYear: number,
+  toYear: number,
+  signal?: AbortSignal,
+): Promise<Observation[]> {
+  const rows = await fetchAllRows<RawObservation>(
+    `country/all/indicator/${indicatorId}`,
+    { date: `${fromYear}:${toYear}` },
+    signal,
+  )
+  return rows
+    .map(toObservation)
+    .filter((o): o is Observation => o !== null)
+    .sort((a, b) => a.year - b.year)
+}

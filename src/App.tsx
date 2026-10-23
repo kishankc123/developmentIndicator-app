@@ -2,11 +2,23 @@ import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { AppHeader } from './components/AppHeader'
 import { CountrySelector } from './components/CountrySelector'
 import { IndicatorSelector } from './components/IndicatorSelector'
+import { FlowsSelector } from './components/FlowsSelector'
+import type { KeplerView } from './components/KeplerMap'
+import { MetricSelector } from './components/MetricSelector'
 import { Panel } from './components/Panel'
 import { StatCard } from './components/StatCard'
+import { ViewSwitch } from './components/ViewSwitch'
 import { StatusMessage } from './components/StatusMessage'
 import { TrendChart, type TrendSeries } from './components/TrendChart'
 import { INDICATORS } from './config/indicators'
+import {
+  DEFAULT_KEPLER_PERIOD,
+  KEPLER_METRICS,
+  KEPLER_PERIODS,
+  metricsFor,
+  type KeplerMetricId,
+  type KeplerPeriod,
+} from './config/keplerMetrics'
 import {
   DEFAULT_COUNTRY_CODES,
   MAX_SELECTED_COUNTRIES,
@@ -15,11 +27,14 @@ import {
 } from './config/theme'
 import { useCountries } from './hooks/useCountries'
 import { useIndicator } from './hooks/useIndicator'
+import { useIndicatorHistory } from './hooks/useIndicatorHistory'
+import { useMigrantStock } from './hooks/useMigrantStock'
 import { useTrend } from './hooks/useTrend'
 import type { Observation } from './types/worldBank'
 import { formatValue } from './utils/format'
 import { toCountryObservations } from './utils/chartData'
-import { buildKeplerDataset } from './utils/keplerData'
+import { buildKeplerDataset, columnExtent, groupHistory } from './utils/keplerData'
+import { buildFlowsDataset, originsWithData } from './utils/migration'
 import { summarize } from './utils/stats'
 import './App.css'
 
@@ -36,6 +51,12 @@ const Assistant = lazy(() => import('./components/Assistant').then((m) => ({ def
 function App() {
   const [indicatorId, setIndicatorId] = useState(INDICATORS[0].id)
   const [selectedCodes, setSelectedCodes] = useState(DEFAULT_COUNTRY_CODES)
+  const [metricChoice, setMetricChoice] = useState<KeplerMetricId>('latest')
+  const [period, setPeriod] = useState<KeplerPeriod>(DEFAULT_KEPLER_PERIOD)
+  const [keplerView, setKeplerView] = useState<KeplerView>('indicator')
+  // undefined follows the dashboard's focused country; picking one in the arcs view overrides it.
+  const [flowsChoice, setFlowsChoice] = useState<string>()
+  const [flowsYearIndex, setFlowsYearIndex] = useState(-1) // -1 = latest year in the file
 
   const indicator = INDICATORS.find((i) => i.id === indicatorId) ?? INDICATORS[0]
   // The page takes its colours from the theme of the selected indicator, so a theme change
@@ -48,6 +69,12 @@ function App() {
   const countries = useCountries()
   const latest = useIndicator(indicator.id)
   const trend = useTrend(indicator.id, selectedCodes)
+  const history = useIndicatorHistory(indicator.id, period)
+
+  // A rate (inflation, unemployment...) has no % change or CAGR, so a choice that does not
+  // apply to the new indicator falls back to the latest value instead of being stored again.
+  const availableMetrics = metricsFor(indicator)
+  const metric = availableMetrics.find((m) => m.id === metricChoice) ?? KEPLER_METRICS[0]
 
   /** Adds a country, dropping the oldest selection if the comparison is full. */
   const addCountry = (code: string) =>
@@ -71,12 +98,21 @@ function App() {
       ? toCountryObservations(latestData, countries.data)
       : new Map<string, Observation>()
 
+  // Only a finished load is used: the "previous" history belongs to another indicator or period.
+  const historyData = history.status === 'success' ? history.data : undefined
   const keplerDataset = useMemo(
-    () => buildKeplerDataset(countries.status === 'success' ? countries.data : [], countryObservations),
-    // countryObservations is rebuilt every render; its content only changes with these two inputs.
+    () =>
+      buildKeplerDataset(
+        countries.status === 'success' ? countries.data : [],
+        countryObservations,
+        countries.status === 'success' && historyData ? groupHistory(historyData, countries.data) : undefined,
+        indicator.kind === 'rate',
+      ),
+    // countryObservations is rebuilt every render; its content only changes with these inputs.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [countries, latestData],
+    [countries, latestData, historyData, indicator.kind],
   )
+  const keplerExtent = columnExtent(keplerDataset, metric.field)
 
   // Colours follow selection order so chips, lines and (later) map outlines agree.
   const colors = Object.fromEntries(selectedCodes.map((c, i) => [c, SERIES_COLORS[i]]))
@@ -91,6 +127,23 @@ function App() {
   }))
 
   const focusCode = selectedCodes[selectedCodes.length - 1]
+
+  // Migration arcs: the file is fetched only once the arcs view is opened.
+  const migrants = useMigrantStock(keplerView === 'flows')
+  const stock = migrants.status === 'success' ? migrants.data : null
+  const flowOrigins = useMemo(
+    () => (stock && countries.status === 'success' ? originsWithData(stock, countries.data) : []),
+    [stock, countries],
+  )
+  const flowsOrigin = flowOrigins.find((c) => c.code === (flowsChoice ?? focusCode))
+  const flowsYear = stock ? (flowsYearIndex < 0 ? stock.years.length - 1 : flowsYearIndex) : 0
+  const flows = useMemo(
+    () =>
+      stock && flowsOrigin && countries.status === 'success'
+        ? buildFlowsDataset(stock, flowsOrigin.code, flowsYear, countries.data)
+        : null,
+    [stock, flowsOrigin, flowsYear, countries],
+  )
   const focus = focusCode ? countryObservations.get(focusCode) : undefined
   const summary = summarize([...countryObservations.values()])
   const show = (o: Observation | undefined) =>
@@ -154,10 +207,64 @@ function App() {
       {!mapLoading && !mapError && (
         <Panel
           title={`Explore: ${indicator.label}`}
-          subtitle="Kepler.gl: country capitals sized and coloured by value. Open the side panel to filter and restyle."
+          subtitle="Kepler.gl: country capitals sized and coloured by the chosen metric. Open the side panel to filter and restyle."
         >
+          <ViewSwitch view={keplerView} onChange={setKeplerView} />
+          {keplerView === 'flows' ? (
+            <>
+              {stock && (
+                <FlowsSelector
+                  origins={flowOrigins}
+                  originCode={flowsOrigin?.code}
+                  years={stock.years}
+                  yearIndex={flowsYear}
+                  onOriginChange={setFlowsChoice}
+                  onYearChange={setFlowsYearIndex}
+                />
+              )}
+              <p className="metric-caption" aria-live="polite">
+                {migrants.status === 'error'
+                  ? `Could not load migration data: ${migrants.error.message}`
+                  : !stock
+                    ? 'Loading migration data…'
+                    : !flows || !flowsOrigin
+                      ? 'No migration data for this country. Pick another above.'
+                      : `People born in ${flowsOrigin.name} who live abroad, mid-${stock.years[flowsYear]}: ${formatValue(flows.summary.total ?? 0, 'count')} in total; the ${flows.summary.arcs} biggest destinations are drawn${flows.summary.shownShare === null ? '' : ` (${Math.round(flows.summary.shownShare)}% of them)`}. These are people living in a country, not movement that year. Source: UN DESA, International Migrant Stock 2024 (CC BY 3.0 IGO).`}
+              </p>
+            </>
+          ) : (
+            <MetricSelector
+              metrics={availableMetrics}
+              metricId={metric.id}
+              periods={KEPLER_PERIODS}
+              period={period}
+              onMetricChange={setMetricChoice}
+              onPeriodChange={setPeriod}
+            />
+          )}
+          <p className="metric-caption" hidden={keplerView === 'flows'} aria-live="polite">
+            {metric.id === 'latest'
+              ? `${indicator.label}: most recent value per country.`
+              : history.status === 'loading'
+                ? `Loading the last ${period} years…`
+                : history.status === 'error'
+                  ? `Could not load history: ${history.error.message}`
+                  : `${metric.label}, ${indicator.label}, over the last ${period} years. ${
+                      metric.diverging
+                        ? 'Purple = rose, orange = fell; bigger dots moved more.'
+                        : 'Darker, bigger dots = bumpier year to year.'
+                    }`}
+          </p>
           <Suspense fallback={<StatusMessage kind="loading" message="Loading Kepler.gl…" />}>
-            <KeplerMap dataset={keplerDataset} datasetLabel="Countries" palette={palette} />
+            <KeplerMap
+              dataset={keplerDataset}
+              datasetLabel="Countries"
+              palette={palette}
+              metric={metric}
+              extent={keplerExtent}
+              view={keplerView}
+              flows={flows?.dataset ?? null}
+            />
           </Suspense>
         </Panel>
       )}

@@ -14,6 +14,9 @@ export const THEME_PALETTES: Record<Topic, string[]> = {
   people: ['#ece7fb', '#d4c9f5', '#b8a6ec', '#9a80de', '#7b5bc9', '#5d3fa6', '#41297a'],
 }
 
+/** Diverging palette for change metrics: orange = decline, light = no change, purple = growth. */
+export const DIVERGING_PALETTE = ['#b35806', '#e08214', '#fdb863', '#f1efe9', '#b2abd2', '#8073ac', '#542788']
+
 /** Line/chip colours for compared countries, assigned in selection order. */
 export const SERIES_COLORS = ['#e8590c', '#1c7ed6', '#2f9e44', '#9c36b5']
 

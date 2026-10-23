@@ -7,7 +7,9 @@ import { hexToRgb } from './color'
 import { CHAT_STORAGE_KEY, loadHistory, saveHistory, trimHistory } from './chatHistory'
 import { buildBarRows, parseToolResult, toCountryObservations } from './chartData'
 import { findCountry } from './countryLookup'
-import { buildKeplerDataset } from './keplerData'
+import { INDICATORS } from '../config/indicators'
+import { metricsFor } from '../config/keplerMetrics'
+import { buildKeplerDataset, columnExtent, groupHistory } from './keplerData'
 import { buildFillColorExpression, buildSelectedFilter } from './mapExpressions'
 import { formatValue } from './format'
 import { summarize } from './stats'
@@ -138,8 +140,65 @@ describe('buildKeplerDataset', () => {
       observations,
     )
     expect(rows).toHaveLength(1)
-    expect(rows[0]).toEqual(['AAA', 'AAA', 'R', 'I', 2020, 5, 1, 2])
+    // Country, code, region, income, year, value, six change columns (empty without history), lat, lng.
+    expect(rows[0]).toEqual(['AAA', 'AAA', 'R', 'I', 2020, 5, ...Array(9).fill(null), 1, 2])
     expect(rows[0]).toHaveLength(fields.length)
+  })
+})
+
+describe('buildKeplerDataset change columns', () => {
+  const country = { code: 'AAA', name: 'A', region: 'R', incomeLevel: 'I', latitude: 1, longitude: 2 }
+  const observations = new Map([['AAA', obs('AAA', 2022, 130)]])
+  const history = new Map([['AAA', [obs('AAA', 2020, 100), obs('AAA', 2021, 110), obs('AAA', 2022, 130)]]])
+  const column = (dataset: ReturnType<typeof buildKeplerDataset>, name: string) =>
+    dataset.rows[0][dataset.fields.findIndex((f) => f.name === name)]
+
+  it('computes change, % change, growth and the from/to years', () => {
+    const dataset = buildKeplerDataset([country], observations, history)
+    expect(column(dataset, 'Change')).toBe(30)
+    expect(column(dataset, '% change')).toBeCloseTo(30)
+    expect(column(dataset, 'Yearly growth (CAGR) %')).toBeGreaterThan(0)
+    expect(column(dataset, 'Size: |change|')).toBe(30)
+    expect(column(dataset, 'From year')).toBe(2020)
+    expect(column(dataset, 'To year')).toBe(2022)
+    expect(dataset.rows[0]).toHaveLength(dataset.fields.length)
+  })
+  it('leaves % change and growth empty for rate indicators', () => {
+    const dataset = buildKeplerDataset([country], observations, history, true)
+    expect(column(dataset, 'Change')).toBe(30)
+    expect(column(dataset, '% change')).toBeNull()
+    expect(column(dataset, 'Yearly growth (CAGR) %')).toBeNull()
+  })
+  it('keeps a country with too little history, with empty metrics', () => {
+    const dataset = buildKeplerDataset([country], observations, new Map([['AAA', [obs('AAA', 2022, 130)]]]))
+    expect(dataset.rows).toHaveLength(1)
+    expect(column(dataset, 'Change')).toBeNull()
+  })
+})
+
+describe('groupHistory', () => {
+  it('groups by country and drops aggregates', () => {
+    const countries = [{ code: 'AAA', name: 'A', region: 'R', incomeLevel: 'I', latitude: null, longitude: null }]
+    const grouped = groupHistory([obs('AAA', 2020, 1), obs('AAA', 2021, 2), obs('WLD', 2020, 9)], countries)
+    expect([...grouped.keys()]).toEqual(['AAA'])
+    expect(grouped.get('AAA')).toHaveLength(2)
+  })
+})
+
+describe('columnExtent', () => {
+  it('is the largest absolute value, ignoring empty cells', () => {
+    const dataset = { fields: [{ name: 'X', type: 'real' as const }], rows: [[-7], [3], [null]] }
+    expect(columnExtent(dataset, 'X')).toBe(7)
+    expect(columnExtent(dataset, 'missing')).toBe(0)
+  })
+})
+
+describe('metricsFor', () => {
+  it('offers % change and CAGR for levels but not rates', () => {
+    const level = INDICATORS.find((i) => i.kind === 'level')!
+    const rate = INDICATORS.find((i) => i.kind === 'rate')!
+    expect(metricsFor(level).map((m) => m.id)).toEqual(['latest', 'change', 'percent', 'cagr', 'volatility'])
+    expect(metricsFor(rate).map((m) => m.id)).toEqual(['latest', 'change', 'volatility'])
   })
 })
 

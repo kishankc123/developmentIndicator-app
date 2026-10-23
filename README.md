@@ -47,6 +47,10 @@ GDP per capita, GDP growth, inflation, unemployment, GNI per capita, Gini, life 
 
 ## Kepler.gl panel
 - "Explore" panel: `KeplerMap` plots one point per country capital (World Bank capital coordinates), sized and coloured by the selected indicator. Countries with no value or no coordinates are skipped (`utils/keplerData.ts`). Layer styling lives in `config/keplerConfig.ts`.
+- **Trend metrics:** the panel shows the latest value or how it changed over the last 5/10/20 years (`MetricSelector`). Metrics are defined in `config/keplerMetrics.ts`: change, % change, yearly growth (CAGR) and volatility, computed per country in `utils/changeMetrics.ts` from one bulk request (`fetchHistoryAll`, `useIndicatorHistory`). The ends of each series are the country's own first and last readings in the window, so countries reporting different years still compare.
+  - Rates (inflation, unemployment, growth, shares) have `kind: 'rate'` in `config/indicators.ts` and get no % change or CAGR (a percentage of a percentage misleads). A metric that cannot be computed (too few readings, zero or negative base) is an empty cell, never 0.
+  - Change metrics use a diverging palette centred on zero: Kepler's quantize scale spans the data's min to max, so `keplerDivergingColorRange` gives equal bands over `[-extent, extent]` as a custom colour map. Size uses `Size: |…|` columns so a big fall draws as large as a big rise.
+  - Switching metric restyles the existing layer in place (`layerVisualChannelConfigChange`), keeping the user's pan/zoom/tweaks.
 - Kepler is an **alpha** (3.3.0-alpha.16, the npm `latest` tag) and weighs ~7 MB in its own lazy chunk; `node_modules` grew by ~1.3 GB.
 - It has its own Redux store, created inside `KeplerMap`, so the rest of the app does not use Redux.
 - Workarounds in `vite.config.ts` / `package.json`, to revisit on every Kepler upgrade:
