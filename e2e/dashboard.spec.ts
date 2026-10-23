@@ -54,7 +54,9 @@ test.describe('dashboard', () => {
   })
 
   test('shows life expectancy in years', async ({ page }) => {
-    await page.getByRole('radio', { name: 'Life expectancy' }).click()
+    // Switching theme selects that theme's first indicator, which is Life expectancy.
+    await page.getByRole('tab', { name: 'People & quality of life' }).click()
+    await expect(page.getByRole('radio', { name: 'Life expectancy' })).toHaveAttribute('aria-checked', 'true')
     await expect(page.getByRole('heading', { level: 2, name: 'Life expectancy', exact: true })).toBeVisible()
     // Fixture value 85000 for the USA is not a real age; this checks the "years" unit and 1 decimal.
     const highest = page.locator('.stat-card', { hasText: 'Highest' })
@@ -63,6 +65,7 @@ test.describe('dashboard', () => {
   })
 
   test('shows population as an abbreviated count', async ({ page }) => {
+    await page.getByRole('tab', { name: 'People & quality of life' }).click()
     await page.getByRole('radio', { name: 'Population' }).click()
     await expect(page.getByRole('heading', { level: 2, name: 'Population', exact: true })).toBeVisible()
     // Fixtures: USA 85000 → "85K"; median of [1400, 2500, 12600, 85000] = 7550 → "7.55K".
@@ -72,12 +75,69 @@ test.describe('dashboard', () => {
     await expect(cards.filter({ hasText: 'Median country' })).toContainText('7.55K')
   })
 
-  test('lists every indicator grouped by topic', async ({ page }) => {
-    // config/indicators.ts: 3 topics (Economy, Prosperity, People), 8 indicators in total.
-    log(`radio groups: ${await page.getByRole('radiogroup').count()}, indicators: ${await page.getByRole('radio').count()}`)
-    log(`indicator labels: ${(await page.getByRole('radio').allInnerTexts()).join(', ')}`)
-    await expect(page.getByRole('radiogroup')).toHaveCount(3)
-    await expect(page.getByRole('radio')).toHaveCount(8)
+  test('shows one tab per theme and only the selected theme\'s indicators', async ({ page }) => {
+    // config/indicators.ts: 3 themes, 9 indicators in total, but only one theme's are visible at a time.
+    const themes: Record<string, string[]> = {
+      Economy: ['GDP per capita', 'GDP growth', 'Inflation', 'Unemployment'],
+      Prosperity: ['GNI per capita', 'Income inequality (Gini)'],
+      'People & quality of life': ['Life expectancy', 'Population', 'Internet use'],
+    }
+    log(`theme tabs: ${(await page.getByRole('tab').allInnerTexts()).join(' | ')}`)
+    await expect(page.getByRole('tab')).toHaveCount(3)
+    await expect(page.getByRole('radiogroup')).toHaveCount(1)
+
+    for (const [theme, labels] of Object.entries(themes)) {
+      await page.getByRole('tab', { name: theme }).click()
+      await expect(page.getByRole('tab', { name: theme })).toHaveAttribute('aria-selected', 'true')
+      log(`${theme}: ${(await page.getByRole('radio').allInnerTexts()).join(', ')}`)
+      await expect(page.getByRole('radio')).toHaveText(labels)
+      // The first indicator of the theme is selected when the theme is chosen.
+      await expect(page.getByRole('radio').first()).toHaveAttribute('aria-checked', 'true')
+    }
+  })
+
+  test('hides the indicators of the other themes', async ({ page }) => {
+    await expect(page.getByRole('radio', { name: 'Population' })).toHaveCount(0)
+    await expect(page.getByRole('radio', { name: 'GNI per capita' })).toHaveCount(0)
+    await page.getByRole('tab', { name: 'People & quality of life' }).click()
+    await expect(page.getByRole('radio', { name: 'GDP growth' })).toHaveCount(0)
+    await expect(page.getByRole('radio', { name: 'Population' })).toBeVisible()
+  })
+
+  test('changes the colour theme when the theme changes', async ({ page }) => {
+    const app = page.locator('.app')
+    const accentOf = () => app.evaluate((el) => getComputedStyle(el).getPropertyValue('--color-accent').trim())
+    const seen: Record<string, string> = {}
+    for (const [theme, topic] of [
+      ['Economy', 'economy'],
+      ['Prosperity', 'prosperity'],
+      ['People & quality of life', 'people'],
+    ]) {
+      await page.getByRole('tab', { name: theme }).click()
+      await expect(app).toHaveAttribute('data-topic', topic)
+      seen[topic] = await accentOf()
+      log(`${topic}: accent ${seen[topic]}`)
+    }
+    // Three themes, three different accent colours.
+    expect(new Set(Object.values(seen)).size).toBe(3)
+  })
+
+  test('shows internet use as a percentage', async ({ page }) => {
+    await page.getByRole('tab', { name: 'People & quality of life' }).click()
+    await page.getByRole('radio', { name: 'Internet use' }).click()
+    await expect(page.getByRole('heading', { level: 2, name: 'Internet use', exact: true })).toBeVisible()
+    const highest = page.locator('.stat-card', { hasText: 'Highest' })
+    log(`"Highest" card for internet use: ${(await highest.innerText()).replace(/\n+/g, ' | ')}`)
+    await expect(highest).toContainText('85000.0%')
+  })
+
+  test('moves between theme tabs with the arrow keys', async ({ page }) => {
+    await page.getByRole('tab', { name: 'Economy' }).focus()
+    await page.keyboard.press('ArrowRight')
+    await expect(page.getByRole('tab', { name: 'Prosperity' })).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByRole('tab', { name: 'Prosperity' })).toBeFocused()
+    await page.keyboard.press('End')
+    await expect(page.getByRole('tab', { name: 'People & quality of life' })).toHaveAttribute('aria-selected', 'true')
   })
 
   test('renders the trend chart with a legend entry per selected country', async ({ page }) => {

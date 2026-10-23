@@ -3,6 +3,9 @@ import type { ValueFormat } from '../utils/format'
 /** Dashboard topic an indicator belongs to. */
 export type Topic = 'economy' | 'prosperity' | 'people'
 
+/** Order the themes are shown in (tabs, default theme = first). */
+export const TOPIC_ORDER: Topic[] = ['economy', 'prosperity', 'people']
+
 /** Display name for each topic. */
 export const TOPIC_LABELS: Record<Topic, string> = {
   economy: 'Economy',
@@ -79,4 +82,23 @@ export const INDICATORS: IndicatorDefinition[] = [
     format: 'count',
     description: 'Total number of people living in the country.',
   },
+  {
+    id: 'IT.NET.USER.ZS',
+    label: 'Internet use',
+    topic: 'people',
+    format: 'percent',
+    description: 'Share of the population that used the internet in the last three months.',
+  },
 ]
+
+/** Indicators that belong to a theme, in display order. */
+export function indicatorsForTopic(topic: Topic): IndicatorDefinition[] {
+  return INDICATORS.filter((indicator) => indicator.topic === topic)
+}
+
+/** The indicator shown when a theme is first selected. */
+export function firstIndicatorOf(topic: Topic): IndicatorDefinition {
+  const [first] = indicatorsForTopic(topic)
+  if (!first) throw new Error(`Theme "${topic}" has no indicators`)
+  return first
+}

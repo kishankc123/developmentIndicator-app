@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { INDICATORS } from '../config/indicators'
@@ -49,24 +49,73 @@ describe('StatusMessage', () => {
 })
 
 describe('IndicatorSelector', () => {
-  it('marks the selected indicator and reports clicks', async () => {
+  const setup = (selectedId: string = INDICATORS[0].id) => {
     const onSelect = vi.fn()
-    render(<IndicatorSelector indicators={INDICATORS} selectedId={INDICATORS[0].id} onSelect={onSelect} />)
+    render(<IndicatorSelector indicators={INDICATORS} selectedId={selectedId} onSelect={onSelect} />)
+    return { onSelect }
+  }
+  const radioNames = () => screen.getAllByRole('radio').map((r) => r.textContent)
+
+  it('shows one tab per theme and marks the theme of the selected indicator', () => {
+    setup()
+    const tabs = screen.getAllByRole('tab')
+    expect(tabs.map((t) => t.textContent)).toEqual(['Economy', 'Prosperity', 'People & quality of life'])
+    expect(screen.getByRole('tab', { name: 'Economy' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tab', { name: 'Prosperity' })).toHaveAttribute('aria-selected', 'false')
+  })
+
+  it('shows only the indicators of the selected theme', () => {
+    setup()
+    expect(radioNames()).toEqual(['GDP per capita', 'GDP growth', 'Inflation', 'Unemployment'])
+    expect(screen.queryByRole('radio', { name: 'Population' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('radio', { name: 'GNI per capita' })).not.toBeInTheDocument()
+  })
+
+  it('shows the people indicators when one of them is selected', () => {
+    setup('SP.POP.TOTL')
+    expect(screen.getByRole('tab', { name: 'People & quality of life' })).toHaveAttribute('aria-selected', 'true')
+    expect(radioNames()).toEqual(['Life expectancy', 'Population', 'Internet use'])
+    expect(screen.getByRole('radio', { name: 'Population' })).toBeChecked()
+  })
+
+  it('marks the selected indicator and reports clicks on an indicator', async () => {
+    const { onSelect } = setup()
     expect(screen.getByRole('radio', { name: 'GDP per capita' })).toBeChecked()
     await userEvent.click(screen.getByRole('radio', { name: 'Inflation' }))
     expect(onSelect).toHaveBeenCalledWith('FP.CPI.TOTL.ZG')
   })
 
-  it('groups the people indicators under their own topic', async () => {
-    const onSelect = vi.fn()
-    render(<IndicatorSelector indicators={INDICATORS} selectedId={INDICATORS[0].id} onSelect={onSelect} />)
-    const group = screen.getByRole('radiogroup', { name: 'People & quality of life' })
-    expect(within(group).getAllByRole('radio').map((r) => r.textContent)).toEqual([
-      'Life expectancy',
-      'Population',
-    ])
-    await userEvent.click(within(group).getByRole('radio', { name: 'Population' }))
-    expect(onSelect).toHaveBeenCalledWith('SP.POP.TOTL')
+  it('selects the first indicator of a theme when its tab is clicked', async () => {
+    const { onSelect } = setup()
+    await userEvent.click(screen.getByRole('tab', { name: 'Prosperity' }))
+    expect(onSelect).toHaveBeenCalledWith('NY.GNP.PCAP.CD')
+  })
+
+  it('does nothing when the tab of the current theme is clicked', async () => {
+    const { onSelect } = setup()
+    await userEvent.click(screen.getByRole('tab', { name: 'Economy' }))
+    expect(onSelect).not.toHaveBeenCalled()
+  })
+
+  it('moves between themes with the arrow keys, wrapping around', async () => {
+    const { onSelect } = setup()
+    screen.getByRole('tab', { name: 'Economy' }).focus()
+    await userEvent.keyboard('{ArrowRight}')
+    expect(onSelect).toHaveBeenLastCalledWith('NY.GNP.PCAP.CD')
+    await userEvent.keyboard('{ArrowLeft}')
+    // From Economy (the first theme) ArrowLeft wraps to the last theme, People.
+    expect(onSelect).toHaveBeenLastCalledWith('SP.DYN.LE00.IN')
+  })
+
+  it('logs theme and indicator choices to the console', async () => {
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {})
+    setup()
+    await userEvent.click(screen.getByRole('tab', { name: 'Prosperity' }))
+    await userEvent.click(screen.getByRole('radio', { name: 'Inflation' }))
+    const lines = log.mock.calls.map((call) => call.join(' '))
+    expect(lines.some((l) => l.includes('[theme]') && l.includes('prosperity'))).toBe(true)
+    expect(lines.some((l) => l.includes('[indicator]') && l.includes('FP.CPI.TOTL.ZG'))).toBe(true)
+    log.mockRestore()
   })
 })
 

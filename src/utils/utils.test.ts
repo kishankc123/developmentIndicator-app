@@ -3,6 +3,7 @@ import type { Observation } from '../types/worldBank'
 import { toChartRows } from './chartRows'
 import { buildColorScale } from './colorScale'
 import { mapboxToWorldBankCode, worldBankToMapboxCode } from './countryCode'
+import { hexToRgb } from './color'
 import { CHAT_STORAGE_KEY, loadHistory, saveHistory, trimHistory } from './chatHistory'
 import { buildBarRows, parseToolResult, toCountryObservations } from './chartData'
 import { findCountry } from './countryLookup'
@@ -296,5 +297,16 @@ describe('toCountryObservations', () => {
       [country('AAA'), country('BBB'), country('CCC')],
     )
     expect([...result.keys()]).toEqual(['AAA', 'CCC'])
+  })
+})
+
+describe('hexToRgb', () => {
+  it('converts a 6-digit hex colour to an [r, g, b] triple', () => {
+    expect(hexToRgb('#1b707e')).toEqual([27, 112, 126])
+    expect(hexToRgb('#FFFFFF')).toEqual([255, 255, 255])
+  })
+  it('rejects anything that is not a 6-digit hex colour', () => {
+    expect(() => hexToRgb('teal')).toThrow()
+    expect(() => hexToRgb('#fff')).toThrow()
   })
 })

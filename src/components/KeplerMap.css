@@ -4,4 +4,6 @@
   border-radius: 10px;
   overflow: hidden;
   position: relative;
+  /* Keeps Kepler's own high z-index panels from painting over the sticky indicator bar. */
+  isolation: isolate;
 }
