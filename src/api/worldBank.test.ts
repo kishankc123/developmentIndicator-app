@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { fetchCountries, fetchLatestByCountry, fetchSeries } from './worldBank'
+import { fetchCountries, fetchIndicatorForYear, fetchLatestByCountry, fetchSeries } from './worldBank'
 
 /** Replaces global fetch with a stub that returns `body` as JSON. */
 function mockFetch(body: unknown, ok = true) {
@@ -40,6 +40,21 @@ describe('fetchLatestByCountry', () => {
     const result = await fetchLatestByCountry('NY.GDP.MKTP.KD.ZG')
     expect(result).toEqual([{ countryCode: 'NPL', countryName: 'Country NPL', year: 2025, value: 4.4 }])
     expect(String(stub.mock.calls[0][0])).toContain('mrnev=1')
+  })
+})
+
+describe('fetchIndicatorForYear', () => {
+  it('requests one year for every country and keeps null values for the caller to filter', async () => {
+    const stub = mockFetch([meta, [row('NPL', '2021', 71.1), row('USA', '2021', null)]])
+    const result = await fetchIndicatorForYear('SP.DYN.LE00.IN', 2021)
+    expect(result.map((o) => [o.countryCode, o.year, o.value])).toEqual([
+      ['NPL', 2021, 71.1],
+      ['USA', 2021, null],
+    ])
+    const url = String(stub.mock.calls[0][0])
+    expect(url).toContain('country/all/indicator/SP.DYN.LE00.IN')
+    expect(url).toContain('date=2021')
+    expect(url).not.toContain('mrnev')
   })
 })
 

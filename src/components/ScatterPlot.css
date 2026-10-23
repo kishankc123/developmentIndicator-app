@@ -1,0 +1,21 @@
+.scatter-plot {
+  width: 100%;
+  min-width: 0;
+}
+
+.scatter-plot__empty {
+  display: grid;
+  place-items: center;
+  min-height: 12rem;
+  margin: 0;
+  color: var(--color-muted);
+}
+
+.scatter-plot__tooltip {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 0.5rem 0.7rem;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}

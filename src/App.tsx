@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { AppHeader } from './components/AppHeader'
+import { ComparisonView } from './components/ComparisonView'
 import { CountrySelector } from './components/CountrySelector'
 import { IndicatorSelector } from './components/IndicatorSelector'
 import { Panel } from './components/Panel'
@@ -186,6 +187,8 @@ function App() {
           <TrendChart observations={trend.data} series={series} format={indicator.format} />
         )}
       </Panel>
+
+      {countries.status === 'success' && <ComparisonView countries={countries.data} />}
 
       <footer className="app__footer">
         Source: World Bank Open Data (World Development Indicators).
