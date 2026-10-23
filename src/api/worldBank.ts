@@ -46,6 +46,7 @@ async function fetchAllRows<T>(
     const response = await fetch(`${BASE_URL}/${path}?${query}`, { signal })
     if (!response.ok) throw new Error(`World Bank request failed (${response.status})`)
     const parsed = parseEnvelope<T>(await response.json())
+    console.log("Parsed", parsed)
     pages = parsed.pages
     rows.push(...parsed.rows)
   }
@@ -102,6 +103,24 @@ export async function fetchLatestByCountry(
   const rows = await fetchAllRows<RawObservation>(
     `country/all/indicator/${indicatorId}`,
     { mrnev: '1' },
+    signal,
+  )
+  return rows.map(toObservation).filter((o): o is Observation => o !== null)
+}
+
+/**
+ * Fetches one indicator for every economy in a single year, so two indicators fetched for
+ * the same year can be compared like for like (unlike `mrnev`, where years differ per country).
+ * The result still contains aggregates and null values; filter against `fetchCountries`.
+ */
+export async function fetchIndicatorForYear(
+  indicatorId: string,
+  year: number,
+  signal?: AbortSignal,
+): Promise<Observation[]> {
+  const rows = await fetchAllRows<RawObservation>(
+    `country/all/indicator/${indicatorId}`,
+    { date: String(year) },
     signal,
   )
   return rows.map(toObservation).filter((o): o is Observation => o !== null)

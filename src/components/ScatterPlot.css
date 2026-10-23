@@ -1,0 +1,12 @@
+.scatter-plot {
+  width: 100%;
+  min-width: 0;
+}
+
+.scatter-plot__empty {
+  display: grid;
+  place-items: center;
+  min-height: 12rem;
+  margin: 0;
+  color: var(--color-muted);
+}

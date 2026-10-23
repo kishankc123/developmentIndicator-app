@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { AppHeader } from './components/AppHeader'
+import { ComparisonView } from './components/ComparisonView'
 import { CountrySelector } from './components/CountrySelector'
 import { IndicatorSelector } from './components/IndicatorSelector'
 import { FlowsSelector } from './components/FlowsSelector'
@@ -204,6 +205,33 @@ function App() {
         </p>
       </Panel>
 
+      <Panel
+        title="Compare over time"
+        subtitle={`${indicator.label}, last 25 years`}
+        actions={
+          countries.status === 'success' && (
+            <CountrySelector
+              countries={countries.data}
+              selectedCodes={selectedCodes}
+              colors={colors}
+              max={MAX_SELECTED_COUNTRIES}
+              onAdd={addCountry}
+              onRemove={removeCountry}
+            />
+          )
+        }
+      >
+        {trend.status === 'error' ? (
+          <StatusMessage kind="error" message={`Could not load trend: ${trend.error.message}`} />
+        ) : trend.status === 'loading' ? (
+          <StatusMessage kind="loading" message="Loading trend…" />
+        ) : (
+          <TrendChart observations={trend.data} series={series} format={indicator.format} />
+        )}
+      </Panel>
+
+      {countries.status === 'success' && <ComparisonView countries={countries.data} />}
+
       {!mapLoading && !mapError && (
         <Panel
           title={`Explore: ${indicator.label}`}
@@ -233,28 +261,30 @@ function App() {
               </p>
             </>
           ) : (
-            <MetricSelector
-              metrics={availableMetrics}
-              metricId={metric.id}
-              periods={KEPLER_PERIODS}
-              period={period}
-              onMetricChange={setMetricChoice}
-              onPeriodChange={setPeriod}
-            />
+            <>
+              <MetricSelector
+                metrics={availableMetrics}
+                metricId={metric.id}
+                periods={KEPLER_PERIODS}
+                period={period}
+                onMetricChange={setMetricChoice}
+                onPeriodChange={setPeriod}
+              />
+              <p className="metric-caption" aria-live="polite">
+                {metric.id === 'latest'
+                  ? `${indicator.label}: most recent value per country.`
+                  : history.status === 'loading'
+                    ? `Loading the last ${period} years…`
+                    : history.status === 'error'
+                      ? `Could not load history: ${history.error.message}`
+                      : `${metric.label}, ${indicator.label}, over the last ${period} years. ${
+                          metric.diverging
+                            ? 'Purple = rose, orange = fell; bigger dots moved more.'
+                            : 'Darker, bigger dots = bumpier year to year.'
+                        }`}
+              </p>
+            </>
           )}
-          <p className="metric-caption" hidden={keplerView === 'flows'} aria-live="polite">
-            {metric.id === 'latest'
-              ? `${indicator.label}: most recent value per country.`
-              : history.status === 'loading'
-                ? `Loading the last ${period} years…`
-                : history.status === 'error'
-                  ? `Could not load history: ${history.error.message}`
-                  : `${metric.label}, ${indicator.label}, over the last ${period} years. ${
-                      metric.diverging
-                        ? 'Purple = rose, orange = fell; bigger dots moved more.'
-                        : 'Darker, bigger dots = bumpier year to year.'
-                    }`}
-          </p>
           <Suspense fallback={<StatusMessage kind="loading" message="Loading Kepler.gl…" />}>
             <KeplerMap
               dataset={keplerDataset}
@@ -269,30 +299,6 @@ function App() {
         </Panel>
       )}
 
-      <Panel
-        title="Compare over time"
-        subtitle={`${indicator.label}, last 25 years`}
-        actions={
-          countries.status === 'success' && (
-            <CountrySelector
-              countries={countries.data}
-              selectedCodes={selectedCodes}
-              colors={colors}
-              max={MAX_SELECTED_COUNTRIES}
-              onAdd={addCountry}
-              onRemove={removeCountry}
-            />
-          )
-        }
-      >
-        {trend.status === 'error' ? (
-          <StatusMessage kind="error" message={`Could not load trend: ${trend.error.message}`} />
-        ) : trend.status === 'loading' ? (
-          <StatusMessage kind="loading" message="Loading trend…" />
-        ) : (
-          <TrendChart observations={trend.data} series={series} format={indicator.format} />
-        )}
-      </Panel>
 
       <footer className="app__footer">
         Source: World Bank Open Data (World Development Indicators).
