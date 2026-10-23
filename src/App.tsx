@@ -152,17 +152,6 @@ function App() {
         </p>
       </Panel>
 
-      {!mapLoading && !mapError && (
-        <Panel
-          title={`Explore: ${indicator.label}`}
-          subtitle="Kepler.gl: country capitals sized and coloured by value. Open the side panel to filter and restyle."
-        >
-          <Suspense fallback={<StatusMessage kind="loading" message="Loading Kepler.gl…" />}>
-            <KeplerMap dataset={keplerDataset} datasetLabel="Countries" palette={palette} />
-          </Suspense>
-        </Panel>
-      )}
-
       <Panel
         title="Compare over time"
         subtitle={`${indicator.label}, last 25 years`}
@@ -189,6 +178,19 @@ function App() {
       </Panel>
 
       {countries.status === 'success' && <ComparisonView countries={countries.data} />}
+
+      {!mapLoading && !mapError && (
+        <Panel
+          title={`Explore: ${indicator.label}`}
+          subtitle="Kepler.gl: country capitals sized and coloured by value. Open the side panel to filter and restyle."
+        >
+          <Suspense fallback={<StatusMessage kind="loading" message="Loading Kepler.gl…" />}>
+            <KeplerMap dataset={keplerDataset} datasetLabel="Countries" palette={palette} />
+          </Suspense>
+        </Panel>
+      )}
+
+      
 
       <footer className="app__footer">
         Source: World Bank Open Data (World Development Indicators).
