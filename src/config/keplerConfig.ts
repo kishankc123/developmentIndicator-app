@@ -1,24 +1,34 @@
 import type { MinSavedConfigV1 } from '@kepler.gl/types'
 import { KEPLER_DATASET_ID, KEPLER_FIELDS } from '../utils/keplerData'
-import { MAP_PALETTE } from './theme'
+import { hexToRgb } from '../utils/color'
+
+/** Id of the country layer, used to find it again when the theme's colours change. */
+export const KEPLER_LAYER_ID = 'country-points'
+
+/** Kepler's colour-range object for one of our sequential palettes. */
+export function keplerColorRange(palette: string[]) {
+  return { name: 'Development Indicator', type: 'sequential', category: 'Custom', colors: palette }
+}
 
 /**
  * Kepler "saved map" config (schema v1): one point layer per country capital, sized
- * and coloured by the indicator value, with a tooltip. Applied once on first load;
- * later data changes keep whatever the user has adjusted in Kepler's side panel.
+ * and coloured by the indicator value, with a tooltip. Applied once on first load, with
+ * the palette of the theme showing at that moment; later data changes keep whatever the
+ * user has adjusted in Kepler's side panel, and theme changes update only the colours.
  */
-export const KEPLER_CONFIG: MinSavedConfigV1 = {
+export function buildKeplerConfig(palette: string[]): MinSavedConfigV1 {
+  return {
   version: 'v1',
   config: {
     visState: {
       layers: [
         {
-          id: 'country-points',
+          id: KEPLER_LAYER_ID,
           type: 'point',
           config: {
             dataId: KEPLER_DATASET_ID,
             label: 'Countries',
-            color: [27, 112, 126],
+            color: hexToRgb(palette[5]),
             columns: {
               lat: KEPLER_FIELDS.latitude,
               lng: KEPLER_FIELDS.longitude,
@@ -32,12 +42,7 @@ export const KEPLER_CONFIG: MinSavedConfigV1 = {
               thickness: 1,
               strokeColor: [255, 255, 255],
               radiusRange: [4, 38],
-              colorRange: {
-                name: 'Development Indicator',
-                type: 'sequential',
-                category: 'Custom',
-                colors: MAP_PALETTE,
-              },
+              colorRange: keplerColorRange(palette),
             },
           },
           visualChannels: {
@@ -73,4 +78,5 @@ export const KEPLER_CONFIG: MinSavedConfigV1 = {
     },
     mapStyle: { styleType: 'dark' },
   },
+}
 }

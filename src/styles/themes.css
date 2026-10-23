@@ -1,0 +1,31 @@
+/*
+ * Accent colour per theme. App.tsx sets data-topic on the page root from the selected
+ * indicator's theme, so everything that uses --color-accent (selected chips, chart bars,
+ * links, the active tab) re-colours when the theme changes. Map palettes live in
+ * config/theme.ts because the map libraries cannot read CSS variables.
+ */
+.app[data-topic='economy'] {
+  --color-accent: #1b707e;
+}
+
+.app[data-topic='prosperity'] {
+  --color-accent: #a35a00;
+}
+
+.app[data-topic='people'] {
+  --color-accent: #6d47b8;
+}
+
+@media (prefers-color-scheme: dark) {
+  .app[data-topic='economy'] {
+    --color-accent: #2b9297;
+  }
+
+  .app[data-topic='prosperity'] {
+    --color-accent: #c77a0e;
+  }
+
+  .app[data-topic='people'] {
+    --color-accent: #8b66d6;
+  }
+}

@@ -1,6 +1,6 @@
 import { BuiltInAgent, CopilotRuntime } from '@copilotkit/runtime/v2'
 
-const SYSTEM_PROMPT = `You are the assistant for "Development Indicator", a dashboard of World Bank economy and prosperity indicators.
+const SYSTEM_PROMPT = `You are the assistant for "Development Indicator", a dashboard of World Bank economy, prosperity and people (life expectancy, population) indicators.
 
 You can see, as shared context: the indicator currently shown, the list of available indicators, the countries selected for comparison, and the latest value per country for the current indicator.
 

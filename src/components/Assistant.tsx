@@ -178,6 +178,7 @@ function AssistantBridge({
           .describe('Id of the indicator to show'),
       }),
       handler: async ({ indicatorId }) => {
+        console.log(`[chat] switch_indicator requested: ${indicatorId as string}`)
         onSelectIndicator(indicatorId as string)
         return `Now showing ${indicators.find((i) => i.id === indicatorId)?.label ?? indicatorId}.`
       },
@@ -195,6 +196,7 @@ function AssistantBridge({
       }),
       handler: async ({ country }) => {
         const match = findCountry(country as string, countries)
+        console.log(`[chat] add_country_to_comparison "${country}" -> ${match?.code ?? 'no unique match'}`)
         if (!match) return `No unique country matches "${country}". Ask the user to be more specific.`
         onAddCountry(match.code)
         return `Added ${match.name} to the comparison.`
@@ -212,6 +214,7 @@ function AssistantBridge({
       }),
       handler: async ({ country }) => {
         const match = findCountry(country as string, countries)
+        console.log(`[chat] remove_country_from_comparison "${country}" -> ${match?.code ?? 'no unique match'}`)
         if (!match || !selectedCodes.includes(match.code)) {
           return `"${country}" is not in the current comparison.`
         }
@@ -245,6 +248,7 @@ function AssistantBridge({
         const { indicators: allIndicators, indicator: current, countries: all, observations } = latest.current
         // Another indicator is fetched here; the dashboard keeps showing its own.
         const target = allIndicators.find((i) => i.id === indicatorId) ?? current
+        console.log(`[chat] show_bar_chart for "${target.label}" (dashboard stays on "${current.label}")`)
         const values =
           target.id === current.id
             ? observations
@@ -300,6 +304,7 @@ function AssistantBridge({
       handler: async ({ title, countries: names, years, indicatorId }) => {
         const { indicators: allIndicators, indicator: current, countries: all } = latest.current
         const target = allIndicators.find((i) => i.id === indicatorId) ?? current
+        console.log(`[chat] show_trend_chart for "${target.label}" (dashboard stays on "${current.label}")`)
         const unresolved: string[] = []
         const matched: Country[] = []
         for (const name of names as string[]) {

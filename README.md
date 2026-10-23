@@ -1,6 +1,6 @@
 # Development Indicator
 
-A dashboard of world development indicators (economy and prosperity first), built from World Bank open data.
+A dashboard of world development indicators (economy, prosperity and people), built from World Bank open data.
 
 ## Stack
 React 19, TypeScript, Vite (with React Compiler), Recharts, Mapbox GL JS, Vitest + React Testing Library.
@@ -33,7 +33,7 @@ src/
 
 ## Data
 Source: World Bank API v2 (no key needed). Indicators in `src/config/indicators.ts`:
-GDP per capita, GDP growth, inflation, unemployment, GNI per capita, Gini.
+GDP per capita, GDP growth, inflation, unemployment, GNI per capita, Gini, life expectancy, population. A new indicator needs only an entry there (plus a `ValueFormat` in `utils/format.ts` if it is a new kind of number); the selector, maps, chart and assistant all read that list.
 
 - The map uses each country's **most recent available value** (`mrnev=1`), so the year differs per country.
 - The map is Mapbox GL JS drawing the free `mapbox.country-boundaries-v1` vector tileset (source layer `country_boundaries`). Countries are joined to World Bank data on `iso_3166_1_alpha_3`; Kosovo is `XKS` in Mapbox but `XKX` in the World Bank API, translated in `utils/countryCode.ts`. Disputed/alternate-worldview polygons are filtered out.
@@ -42,7 +42,7 @@ GDP per capita, GDP growth, inflation, unemployment, GNI per capita, Gini.
 
 ## Notes
 - TypeScript is pinned to 6.0.x because `typescript-eslint` 8.72 does not yet accept TypeScript 7. Revisit when it does.
-- Not yet done: Playwright end-to-end tests; keyboard access to map countries (the country dropdown is the keyboard route); live verification of the Mapbox layers needs a token.
+- Not yet done: keyboard access to map countries (the country dropdown is the keyboard route); live verification of the Mapbox layers needs a token.
 - Mapbox GL needs a token, and usage is billed by Mapbox beyond its free tier. Use a public token restricted to your domains.
 
 ## Kepler.gl panel
@@ -76,3 +76,9 @@ GDP per capita, GDP growth, inflation, unemployment, GNI per capita, Gini.
   ```
   Review the traffic, then switch to enforcing with `vercel firewall rules edit "Rate limit chat" --rate-limit-action rate_limit --yes`, and publish with `vercel firewall publish --yes`. A message that makes the model call a chart tool uses two requests (the run, then a follow-up run with the tool result). Counters are per Vercel region. The browser shows a notice when it receives HTTP 429. `npm run dev` has no limiter.
 - **Chat questions do not move the maps:** `show_bar_chart` and `show_trend_chart` take an optional `indicatorId`, so asking about another indicator (e.g. inflation while GDP growth is shown) fetches that data for the chart and leaves the dashboard alone. `switch_indicator` and the comparison tools change the dashboard only on an explicit request ("show inflation on the map"); both the tool descriptions and the system prompt say so.
+
+## Themes and colour
+- Indicators are grouped into three themes (`TOPIC_ORDER` in `config/indicators.ts`): Economy, Prosperity, and People & quality of life. The selector shows a tab per theme and **only the selected theme's indicators**. The selected theme is derived from the selected indicator (one source of truth), so a change made by the chat assistant updates the tabs too. Choosing a theme selects its first indicator.
+- Each theme has its own colour: the accent for chips, tabs and chart bars is set by `data-topic` on the page root (`styles/themes.css`, light and dark), and the map palettes (`THEME_PALETTES` in `config/theme.ts`) are passed to the Mapbox map and the Kepler layer, which cannot read CSS variables. Kepler is recoloured in place (`layerVisConfigChange`), not remounted, so a theme change costs no extra Mapbox map load.
+- To add an indicator, add it to `INDICATORS` after checking the code on the live World Bank API. To add a theme, extend `Topic`, `TOPIC_LABELS`, `TOPIC_ORDER`, `THEME_PALETTES` and the rules in `themes.css`; `config/themes.test.ts` fails if any of these is missing.
+- Selection and colour changes log to the browser console with `[theme]`, `[indicator]`, `[map]`, `[kepler]` and `[chat]` prefixes.

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { AppHeader } from './components/AppHeader'
 import { CountrySelector } from './components/CountrySelector'
 import { IndicatorSelector } from './components/IndicatorSelector'
@@ -7,7 +7,12 @@ import { StatCard } from './components/StatCard'
 import { StatusMessage } from './components/StatusMessage'
 import { TrendChart, type TrendSeries } from './components/TrendChart'
 import { INDICATORS } from './config/indicators'
-import { DEFAULT_COUNTRY_CODES, MAX_SELECTED_COUNTRIES, SERIES_COLORS } from './config/theme'
+import {
+  DEFAULT_COUNTRY_CODES,
+  MAX_SELECTED_COUNTRIES,
+  SERIES_COLORS,
+  THEME_PALETTES,
+} from './config/theme'
 import { useCountries } from './hooks/useCountries'
 import { useIndicator } from './hooks/useIndicator'
 import { useTrend } from './hooks/useTrend'
@@ -33,6 +38,13 @@ function App() {
   const [selectedCodes, setSelectedCodes] = useState(DEFAULT_COUNTRY_CODES)
 
   const indicator = INDICATORS.find((i) => i.id === indicatorId) ?? INDICATORS[0]
+  // The page takes its colours from the theme of the selected indicator, so a theme change
+  // made anywhere (the tabs, a click, the chat assistant) re-colours everything consistently.
+  const palette = THEME_PALETTES[indicator.topic]
+  useEffect(() => {
+    console.log(`[theme] colour theme is now "${indicator.topic}" (accent and map palette)`)
+  }, [indicator.topic])
+
   const countries = useCountries()
   const latest = useIndicator(indicator.id)
   const trend = useTrend(indicator.id, selectedCodes)
@@ -90,7 +102,7 @@ function App() {
   const mapError = countries.status === 'error' ? countries : latest.status === 'error' ? latest : null
 
   return (
-    <div className="app">
+    <div className="app" data-topic={indicator.topic}>
       <AppHeader />
       <IndicatorSelector
         indicators={INDICATORS}
@@ -127,6 +139,7 @@ function App() {
             <WorldMap
               observations={countryObservations}
               format={indicator.format}
+              palette={palette}
               selectedCodes={selectedCodes}
               onCountryClick={toggleCountry}
             />
@@ -144,7 +157,7 @@ function App() {
           subtitle="Kepler.gl: country capitals sized and coloured by value. Open the side panel to filter and restyle."
         >
           <Suspense fallback={<StatusMessage kind="loading" message="Loading Kepler.gl…" />}>
-            <KeplerMap dataset={keplerDataset} datasetLabel="Countries" />
+            <KeplerMap dataset={keplerDataset} datasetLabel="Countries" palette={palette} />
           </Suspense>
         </Panel>
       )}

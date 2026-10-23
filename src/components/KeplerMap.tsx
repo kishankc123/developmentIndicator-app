@@ -1,10 +1,10 @@
-import { addDataToMap, registerEntry, toggleSidePanel } from '@kepler.gl/actions'
+import { addDataToMap, layerVisConfigChange, registerEntry, toggleSidePanel } from '@kepler.gl/actions'
 import KeplerGl from '@kepler.gl/components'
 import { enhanceReduxMiddleware, keplerGlReducer } from '@kepler.gl/reducers'
 import { useEffect, useRef, useState } from 'react'
 import { Provider } from 'react-redux'
 import { applyMiddleware, combineReducers, legacy_createStore } from 'redux'
-import { KEPLER_CONFIG } from '../config/keplerConfig'
+import { KEPLER_LAYER_ID, buildKeplerConfig, keplerColorRange } from '../config/keplerConfig'
 import { MAPBOX_TOKEN } from '../config/mapbox'
 import { KEPLER_DATASET_ID, type KeplerDataset } from '../utils/keplerData'
 import { StatusMessage } from './StatusMessage'
@@ -19,6 +19,14 @@ function createKeplerStore() {
   )
 }
 
+/** The layer type the Kepler actions expect. */
+type KeplerLayer = Parameters<typeof layerVisConfigChange>[0]
+
+/** Kepler types its store state as `{}`; this describes only the part we read (layer ids). */
+type KeplerStoreState = {
+  keplerGl?: Record<string, { visState?: { layers?: { id: string }[] } } | undefined>
+}
+
 /** Instance id Kepler uses to find its slice of state. */
 const KEPLER_ID = 'indicator-map'
 
@@ -28,12 +36,19 @@ interface KeplerMapProps {
   dataset: KeplerDataset
   /** Label for the dataset in Kepler's layer panel (usually the indicator name). */
   datasetLabel: string
+  /** Sequential colours (light to dark) for the points; they follow the selected theme. */
+  palette: string[]
   /** Mapbox public access token. Defaults to `VITE_MAPBOX_PUBLIC_ACCESS`. */
   accessToken?: string
 }
 
 /** Kepler.gl map: filters, layer styling and tooltips on top of the indicator data. */
-export function KeplerMap({ dataset, datasetLabel, accessToken = MAPBOX_TOKEN }: KeplerMapProps) {
+export function KeplerMap({
+  dataset,
+  datasetLabel,
+  palette,
+  accessToken = MAPBOX_TOKEN,
+}: KeplerMapProps) {
   const [store] = useState(createKeplerStore)
   const containerRef = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(0)
@@ -69,13 +84,34 @@ export function KeplerMap({ dataset, datasetLabel, accessToken = MAPBOX_TOKEN }:
         datasets: { info: { id: KEPLER_DATASET_ID, label: datasetLabel }, data: dataset },
         // Fit the view to the data once; later indicator switches must not reset the user's pan/zoom.
         options: { centerMap: !loadedRef.current, readOnly: false, keepExistingConfig: loadedRef.current },
-        ...(loadedRef.current ? {} : { config: KEPLER_CONFIG }),
+        ...(loadedRef.current ? {} : { config: buildKeplerConfig(palette) }),
       }),
     )
     // Loading data opens the layer panel; keep it closed so the map stays visible.
     store.dispatch(toggleSidePanel(null))
     loadedRef.current = true
+    // `palette` is read only on the first load; later theme changes are handled by the effect below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [store, dataset, datasetLabel, accessToken])
+
+  // A theme change recolours the existing layer in place (no remount, so no extra Mapbox map
+  // load and the user's pan/zoom/styling are kept).
+  const appliedPalette = useRef(palette)
+  useEffect(() => {
+    if (appliedPalette.current === palette) return
+    const layer = (store.getState() as KeplerStoreState).keplerGl?.[KEPLER_ID]?.visState?.layers?.find(
+      (l) => l.id === KEPLER_LAYER_ID,
+    )
+    if (!layer) {
+      console.log('[kepler] palette change skipped: the layer is not ready yet')
+      return
+    }
+    console.log(`[kepler] recolouring points, palette ${palette[0]}…${palette[palette.length - 1]}`)
+    appliedPalette.current = palette
+    store.dispatch(
+      layerVisConfigChange(layer as KeplerLayer, { colorRange: keplerColorRange(palette) }),
+    )
+  }, [store, palette])
 
   if (!accessToken) {
     return (
