@@ -11,7 +11,6 @@ import {
   NODATA_COLOR_DARK,
   NODATA_COLOR_LIGHT,
 } from '../config/mapbox'
-import { MAP_PALETTE } from '../config/theme'
 import type { Observation } from '../types/worldBank'
 import { buildColorScale } from '../utils/colorScale'
 import { mapboxToWorldBankCode } from '../utils/countryCode'
@@ -41,6 +40,8 @@ interface WorldMapProps {
   observations: Map<string, Observation>
   /** How values are formatted in the hover readout and legend. */
   format: ValueFormat
+  /** Sequential colours (light to dark) for the choropleth; they follow the selected theme. */
+  palette: string[]
   /** ISO3 codes currently compared; the map outlines these countries. */
   selectedCodes: string[]
   /** Called with a country's ISO3 code when the user clicks it on the map. */
@@ -53,6 +54,7 @@ interface WorldMapProps {
 export function WorldMap({
   observations,
   format,
+  palette,
   selectedCodes,
   onCountryClick,
   accessToken = MAPBOX_TOKEN,
@@ -73,7 +75,7 @@ export function WorldMap({
   const values = [...observations.values()]
     .map((o) => o.value)
     .filter((v): v is number => v !== null)
-  const scale = buildColorScale(values, MAP_PALETTE)
+  const scale = buildColorScale(values, palette)
 
   // Create the map once per token; tear it down on unmount (frees the WebGL context).
   useEffect(() => {
@@ -162,12 +164,15 @@ export function WorldMap({
   useEffect(() => {
     const map = mapRef.current
     if (!ready || !map) return
+    console.log(
+      `[map] recolouring ${observations.size} countries, palette ${palette[0]}…${palette[palette.length - 1]}`,
+    )
     map.setPaintProperty(
       FILL_LAYER,
       'fill-color',
       buildFillColorExpression(observations, scale, noDataColorRef.current),
     )
-  }, [ready, observations, scale])
+  }, [ready, observations, scale, palette])
 
   // Redraw the outlines when the compared countries change.
   useEffect(() => {
