@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AsyncState } from '../hooks/useAsyncData'
 import type { PairedObservations } from '../hooks/usePairedIndicators'
 import type { Country, Observation } from '../types/worldBank'
@@ -76,6 +76,17 @@ vi.mock('./ScatterPlot', () => ({
     </div>
   ),
 }))
+
+// jsdom does not implement the modal methods of <dialog>.
+beforeAll(() => {
+  HTMLDialogElement.prototype.showModal = function showModal() {
+    this.setAttribute('open', '')
+  }
+  HTMLDialogElement.prototype.close = function close() {
+    this.removeAttribute('open')
+    this.dispatchEvent(new Event('close'))
+  }
+})
 
 beforeEach(() => {
   state = { status: 'success', data }
@@ -168,5 +179,25 @@ describe('ComparisonView', () => {
     await user.click(screen.getByRole('button', { name: 'Gender gap vs income' }))
     expect(screen.getByTestId('scatter-active')).toBeEmptyDOMElement()
     expect(requestedKeys.at(-1)).toBe('gender-income')
+  })
+
+  it('enlarges the chart in a dialog that shares the hover state, and the cross closes it', async () => {
+    const user = userEvent.setup()
+    render(<ComparisonView countries={countries} />)
+    await screen.findByTestId('scatter-points')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Enlarge chart' }))
+    const dialog = screen.getByRole('dialog', { name: /Health spending per person vs Life expectancy, 2021/ })
+    expect(dialog).toBeInTheDocument()
+    // Two charts now (small and enlarged); hovering a dot in the enlarged one drives the map too.
+    const dots = screen.getAllByRole('button', { name: 'dot hover Alpha' })
+    expect(dots).toHaveLength(2)
+    await user.hover(dots[1])
+    expect(screen.getByTestId('map-outlined')).toHaveTextContent('AAA')
+
+    await user.click(screen.getByRole('button', { name: 'Close enlarged chart' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: 'dot hover Alpha' })).toHaveLength(1)
   })
 })
