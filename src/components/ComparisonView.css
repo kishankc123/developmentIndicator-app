@@ -1,0 +1,148 @@
+.comparison-view {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.comparison-view__controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.comparison-view__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+}
+
+.comparison-view__label {
+  min-width: 7.5rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-muted);
+}
+
+.comparison-view__pair {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.comparison-view__choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.comparison-view__choice {
+  padding: 0.35rem 0.8rem;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.comparison-view__choice[aria-pressed='true'] {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: #fff;
+}
+
+.comparison-view__choice:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.comparison-view__picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--color-muted);
+}
+
+.comparison-view__picker select {
+  max-width: 12rem;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+}
+
+.comparison-view__summary,
+.comparison-view__readout,
+.comparison-view__note,
+.comparison-view__extremes p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-muted);
+}
+
+.comparison-view__readout {
+  min-height: 1.3em;
+  color: var(--color-text);
+}
+
+.comparison-view__note {
+  margin-top: 0.5rem;
+}
+
+/* Side by side when there is room; stacked on narrow screens. */
+.comparison-view__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  gap: 1rem;
+  align-items: start;
+}
+
+.comparison-view__map,
+.comparison-view__grid > * {
+  min-width: 0;
+}
+
+.comparison-view__extremes {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.comparison-view__chart {
+  position: relative;
+}
+
+.comparison-view__enlarge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface);
+  color: var(--color-muted);
+  cursor: pointer;
+}
+
+.comparison-view__enlarge:hover,
+.comparison-view__enlarge:focus-visible {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+/* ResponsiveContainer needs a parent with a definite height to fill. */
+.comparison-view__chart-large {
+  height: min(70vh, 640px);
+}
+
+.comparison-view__chart-large .scatter-plot {
+  height: 100%;
+}

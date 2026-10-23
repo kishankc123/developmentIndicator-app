@@ -1,6 +1,6 @@
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   COUNTRY_CODE_PROPERTY,
   COUNTRY_SOURCE_LAYER,
@@ -46,6 +46,11 @@ interface WorldMapProps {
   selectedCodes: string[]
   /** Called with a country's ISO3 code when the user clicks it on the map. */
   onCountryClick: (code: string) => void
+  /**
+   * Optional. Called with a country's ISO3 code when the pointer moves onto it, and with
+   * undefined when it leaves the map's countries; lets a sibling chart mirror the hover.
+   */
+  onCountryHover?: (code: string | undefined) => void
   /** Mapbox public access token. Defaults to `VITE_MAPBOX_PUBLIC_ACCESS`; override in tests or stories. */
   accessToken?: string
 }
@@ -57,12 +62,15 @@ export function WorldMap({
   palette,
   selectedCodes,
   onCountryClick,
+  onCountryHover,
   accessToken = MAPBOX_TOKEN,
 }: WorldMapProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<mapboxgl.Map | null>(null)
-  // The map is created once; this ref lets its click handler always call the latest callback.
+  // The map is created once; these refs let its event handlers always call the latest callbacks.
   const onClickRef = useRef(onCountryClick)
+  const onHoverRef = useRef(onCountryHover)
+  const hoveredCodeRef = useRef<string | undefined>(undefined)
   const noDataColorRef = useRef(NODATA_COLOR_LIGHT)
   const [ready, setReady] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -70,12 +78,17 @@ export function WorldMap({
 
   useEffect(() => {
     onClickRef.current = onCountryClick
+    onHoverRef.current = onCountryHover
   })
 
-  const values = [...observations.values()]
-    .map((o) => o.value)
-    .filter((v): v is number => v !== null)
-  const scale = buildColorScale(values, palette)
+  // Memoised so a parent re-render that only changes `selectedCodes` (a hover elsewhere on the
+  // page) does not rebuild the scale and repaint every country.
+  const scale = useMemo(() => {
+    const values = [...observations.values()]
+      .map((o) => o.value)
+      .filter((v): v is number => v !== null)
+    return buildColorScale(values, palette)
+  }, [observations, palette])
 
   // Create the map once per token; tear it down on unmount (frees the WebGL context).
   useEffect(() => {
@@ -137,10 +150,17 @@ export function WorldMap({
       }
       // mousemove fires constantly; only update state when the hovered country changes.
       setHover((prev) => (prev?.code === next.code && prev?.name === next.name ? prev : next))
+      // Tell the parent only on a change; an updater function must stay free of side effects.
+      if (hoveredCodeRef.current !== next.code) {
+        hoveredCodeRef.current = next.code
+        onHoverRef.current?.(next.code)
+      }
     })
     map.on('mouseleave', FILL_LAYER, () => {
       map.getCanvas().style.cursor = ''
       setHover(null)
+      hoveredCodeRef.current = undefined
+      onHoverRef.current?.(undefined)
     })
     map.on('click', FILL_LAYER, (event) => {
       const code = mapboxToWorldBankCode(event.features?.[0]?.properties?.[COUNTRY_CODE_PROPERTY])

@@ -20,6 +20,11 @@ export interface IndicatorDefinition {
   label: string
   topic: Topic
   format: ValueFormat
+  /**
+   * `level` is an amount (GDP, population); `rate` is already a percentage or index
+   * (growth, inflation). A % change of a rate is misleading, so rates only get absolute change.
+   */
+  kind: 'level' | 'rate'
   /** One-line plain-language explanation shown under the map. */
   description: string
 }
@@ -31,6 +36,7 @@ export const INDICATORS: IndicatorDefinition[] = [
     label: 'GDP per capita',
     topic: 'economy',
     format: 'usd',
+    kind: 'level',
     description: 'Economic output per person, in current US dollars.',
   },
   {
@@ -38,6 +44,7 @@ export const INDICATORS: IndicatorDefinition[] = [
     label: 'GDP growth',
     topic: 'economy',
     format: 'percent',
+    kind: 'rate',
     description: 'Annual change in real GDP.',
   },
   {
@@ -45,6 +52,7 @@ export const INDICATORS: IndicatorDefinition[] = [
     label: 'Inflation',
     topic: 'economy',
     format: 'percent',
+    kind: 'rate',
     description: 'Annual change in consumer prices.',
   },
   {
@@ -52,6 +60,7 @@ export const INDICATORS: IndicatorDefinition[] = [
     label: 'Unemployment',
     topic: 'economy',
     format: 'percent',
+    kind: 'rate',
     description: 'Share of the labour force without work (modelled ILO estimate).',
   },
   {
@@ -59,6 +68,7 @@ export const INDICATORS: IndicatorDefinition[] = [
     label: 'GNI per capita',
     topic: 'prosperity',
     format: 'usd',
+    kind: 'level',
     description: 'Gross national income per person, Atlas method, current US dollars.',
   },
   {
@@ -66,6 +76,7 @@ export const INDICATORS: IndicatorDefinition[] = [
     label: 'Income inequality (Gini)',
     topic: 'prosperity',
     format: 'index',
+    kind: 'rate',
     description: 'Gini index: 0 is perfect equality, 100 is maximum inequality. Sparse coverage.',
   },
   {
@@ -73,6 +84,7 @@ export const INDICATORS: IndicatorDefinition[] = [
     label: 'Life expectancy',
     topic: 'people',
     format: 'years',
+    kind: 'level',
     description: 'Years a newborn would live if current mortality patterns stayed the same.',
   },
   {
@@ -80,6 +92,7 @@ export const INDICATORS: IndicatorDefinition[] = [
     label: 'Population',
     topic: 'people',
     format: 'count',
+    kind: 'level',
     description: 'Total number of people living in the country.',
   },
   {
@@ -87,6 +100,7 @@ export const INDICATORS: IndicatorDefinition[] = [
     label: 'Internet use',
     topic: 'people',
     format: 'percent',
+    kind: 'rate',
     description: 'Share of the population that used the internet in the last three months.',
   },
 ]

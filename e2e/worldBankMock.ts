@@ -55,6 +55,15 @@ export async function mockWorldBank(page: Page, options: { failIndicator?: strin
       return route.fulfill({ status: 500, body: 'boom' })
     }
 
+    // The Kepler history request: every economy over a date range (the latest-value call has no range).
+    if (parts[1] === 'all' && url.searchParams.has('date')) {
+      const [from, to] = url.searchParams.get('date')!.split(':').map(Number)
+      const rows = Object.entries(LATEST).flatMap(([code, v]) =>
+        Array.from({ length: to - from + 1 }, (_, i) => observation(code, indicator, from + i, v * (0.8 + (i / (to - from)) * 0.2))),
+      )
+      return route.fulfill({ json: envelope(rows) })
+    }
+
     if (parts[1] === 'all') {
       return route.fulfill({
         json: envelope(Object.entries(LATEST).map(([code, v]) => observation(code, indicator, 2023, v))),
@@ -70,4 +79,22 @@ export async function mockWorldBank(page: Page, options: { failIndicator?: strin
     )
     return route.fulfill({ json: envelope(rows) })
   })
+}
+
+/**
+ * Small stand-in for public/data/migrant-stock.json (built from UN DESA data), so tests do not
+ * depend on the real 170 KB file. India has two destinations; Nepal has one it can be drawn to.
+ */
+export async function mockMigrantStock(page: Page) {
+  await page.route('**/data/migrant-stock.json', (route) =>
+    route.fulfill({
+      json: {
+        years: [1990, 2024],
+        origins: {
+          IND: { total: [3000000, 18000000], to: [['USA', [400000, 2800000]], ['CHN', [10000, 50000]]] },
+          NPL: { total: [500000, 2600000], to: [['IND', [400000, 600000]], ['USA', [10000, 260000]]] },
+        },
+      },
+    }),
+  )
 }

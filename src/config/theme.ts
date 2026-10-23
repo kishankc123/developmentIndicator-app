@@ -14,6 +14,13 @@ export const THEME_PALETTES: Record<Topic, string[]> = {
   people: ['#ece7fb', '#d4c9f5', '#b8a6ec', '#9a80de', '#7b5bc9', '#5d3fa6', '#41297a'],
 }
 
+/**
+ * Diverging palette, lowest to highest band: orange = below (the trend line, or a decline), pale
+ * middle = on it (or no change), purple = above it (or growth). Orange and purple stay
+ * distinguishable with the common kinds of colour blindness (ColorBrewer PuOr).
+ */
+export const DIVERGING_PALETTE = ['#b35806', '#f1a340', '#fee0b6', '#f1eef0', '#d8daeb', '#998ec3', '#542788']
+
 /** Line/chip colours for compared countries, assigned in selection order. */
 export const SERIES_COLORS = ['#e8590c', '#1c7ed6', '#2f9e44', '#9c36b5']
 
