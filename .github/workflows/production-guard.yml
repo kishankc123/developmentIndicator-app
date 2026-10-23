@@ -1,0 +1,27 @@
+name: Production guard
+
+on:
+  pull_request:
+    branches: [production]
+
+permissions:
+  contents: read
+
+jobs:
+  only-from-main:
+    name: Only main may merge into production
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check the source branch
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          THIS_REPO: ${{ github.repository }}
+        run: |
+          if [ "$HEAD_REF" != "main" ] || [ "$HEAD_REPO" != "$THIS_REPO" ]; then
+            echo "::error::PRs into production must come from this repo's main branch (got '$HEAD_REPO:$HEAD_REF')."
+            exit 1
+          fi
+
+
+
