@@ -23,6 +23,9 @@ export function usePairedIndicators(
       fetchIndicatorForYear(driver.id, year, signal),
       fetchIndicatorForYear(outcome.id, year, signal),
     ])
+    console.log(
+      `[compare] loaded ${driver.id} (${drivers.length} rows) and ${outcome.id} (${outcomes.length} rows) for ${year}`,
+    )
     return { drivers, outcomes }
   })
 }

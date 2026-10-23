@@ -1,4 +1,4 @@
-import { lazy, Suspense, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { COMPARISONS } from '../config/comparisons'
 import { DIVERGING_PALETTE, THEME_PALETTES } from '../config/theme'
 import { usePairedIndicators } from '../hooks/usePairedIndicators'
@@ -51,6 +51,15 @@ export function ComparisonView({ countries }: ComparisonViewProps) {
   const residuals = useMemo(() => (fit ? withResiduals(points, fit) : []), [points, fit])
   const { above, below } = useMemo(() => extremes(residuals, EXTREME_COUNT), [residuals])
 
+  // Log what the join produced, so a gap in the data is visible without opening the network tab.
+  useEffect(() => {
+    if (!loaded) return
+    console.log(
+      `[compare] "${comparison.id}": ${points.length} countries have both values` +
+        (fit ? `, trend r2 ${fit.r2.toFixed(2)}, slope ${fit.slope.toFixed(2)} per tenfold` : ', too few for a trend line'),
+    )
+  }, [loaded, points, fit, comparison.id])
+
   // The map reads Observations; build them for the chosen view. Stable between hovers so the
   // map does not repaint every country each time the pointer moves.
   const year = comparison.year
@@ -71,11 +80,30 @@ export function ComparisonView({ countries }: ComparisonViewProps) {
 
   /** Selecting a category resets the selection: a country picked in one pair may have no data in the next. */
   const chooseComparison = (id: string) => {
+    console.log(`[compare] selected "${id}" (was "${comparisonId}"), selection cleared`)
     setComparisonId(id)
     setSelectedCode(undefined)
     setHoverCode(undefined)
   }
-  const toggleSelected = (code: string) => setSelectedCode((prev) => (prev === code ? undefined : code))
+  /** Click on the map or chart: select the country, or clear it when it is already selected. */
+  const toggleSelected = (code: string) => {
+    const next = selectedCode === code ? undefined : code
+    console.log(`[compare] ${next ? `selected ${code}` : `cleared selection (${code} clicked again)`}`)
+    setSelectedCode(next)
+  }
+  /** Picker choice; an empty value means "None". */
+  const pickCountry = (code: string | undefined) => {
+    console.log(`[compare] picker ${code ? `selected ${code}` : 'cleared'}`)
+    setSelectedCode(code)
+  }
+  const chooseView = (next: MapView) => {
+    console.log(`[compare] map now shows ${next === 'residual' ? 'distance from the trend line' : 'the actual outcome'}`)
+    setView(next)
+  }
+  const setEnlargedLogged = (open: boolean) => {
+    console.log(`[compare] chart ${open ? 'enlarged' : 'closed'}`)
+    setEnlarged(open)
+  }
 
   const readout = activePoint
     ? `${activePoint.name}: ${driver.label} ${formatValue(activePoint.x, driver.format)}, ${outcome.label} ${formatValue(activePoint.y, outcome.format)}` +
@@ -128,7 +156,7 @@ export function ComparisonView({ countries }: ComparisonViewProps) {
                 type="button"
                 aria-pressed={view === 'outcome'}
                 className="comparison-view__choice"
-                onClick={() => setView('outcome')}
+                onClick={() => chooseView('outcome')}
               >
                 Actual {outcome.label.toLowerCase()}
               </button>
@@ -137,7 +165,7 @@ export function ComparisonView({ countries }: ComparisonViewProps) {
                 aria-pressed={view === 'residual'}
                 className="comparison-view__choice"
                 disabled={!fit}
-                onClick={() => setView('residual')}
+                onClick={() => chooseView('residual')}
               >
                 Better or worse than expected
               </button>
@@ -146,7 +174,7 @@ export function ComparisonView({ countries }: ComparisonViewProps) {
               <span>Highlight a country</span>
               <select
                 value={selectedCode ?? ''}
-                onChange={(event) => setSelectedCode(event.target.value || undefined)}
+                onChange={(event) => pickCountry(event.target.value || undefined)}
                 disabled={points.length === 0}
               >
                 <option value="">None</option>
@@ -196,7 +224,7 @@ export function ComparisonView({ countries }: ComparisonViewProps) {
                   className="comparison-view__enlarge"
                   aria-label="Enlarge chart"
                   title="Enlarge chart"
-                  onClick={() => setEnlarged(true)}
+                  onClick={() => setEnlargedLogged(true)}
                 >
                   <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
                     <path
@@ -224,7 +252,7 @@ export function ComparisonView({ countries }: ComparisonViewProps) {
             <ChartDialog
               open={enlarged}
               title={`${driver.label} vs ${outcome.label}, ${comparison.year}`}
-              onClose={() => setEnlarged(false)}
+              onClose={() => setEnlargedLogged(false)}
             >
               {/* Same points and hover/selection state as the small chart, just taller. */}
               <div className="comparison-view__chart-large">

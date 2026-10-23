@@ -46,6 +46,7 @@ async function fetchAllRows<T>(
     const response = await fetch(`${BASE_URL}/${path}?${query}`, { signal })
     if (!response.ok) throw new Error(`World Bank request failed (${response.status})`)
     const parsed = parseEnvelope<T>(await response.json())
+    console.log("Parsed", parsed)
     pages = parsed.pages
     rows.push(...parsed.rows)
   }
