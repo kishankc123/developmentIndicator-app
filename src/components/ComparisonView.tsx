@@ -85,53 +85,68 @@ export function ComparisonView({ countries }: ComparisonViewProps) {
     >
       <div className="comparison-view" data-topic={comparison.topic}>
         <div className="comparison-view__controls">
-          <div role="group" aria-label="Comparison" className="comparison-view__choices">
-            {COMPARISONS.map((c) => (
-              <button
-                key={c.id}
-                type="button"
-                aria-pressed={c.id === comparison.id}
-                className="comparison-view__choice"
-                onClick={() => chooseComparison(c.id)}
-              >
-                {c.label}
-              </button>
-            ))}
-          </div>
-          <div role="group" aria-label="Map shows" className="comparison-view__choices">
-            <button
-              type="button"
-              aria-pressed={view === 'outcome'}
-              className="comparison-view__choice"
-              onClick={() => setView('outcome')}
-            >
-              {outcome.label}
-            </button>
-            <button
-              type="button"
-              aria-pressed={view === 'residual'}
-              className="comparison-view__choice"
-              disabled={!fit}
-              onClick={() => setView('residual')}
-            >
-              Better or worse than expected
-            </button>
-          </div>
-          <label className="comparison-view__picker">
-            <span>Highlight a country</span>
-            <select
-              value={selectedCode ?? ''}
-              onChange={(event) => setSelectedCode(event.target.value || undefined)}
-              disabled={points.length === 0}
-            >
-              <option value="">None</option>
-              {points.map((p) => (
-                <option key={p.code} value={p.code}>
-                  {p.name}
-                </option>
+          <div className="comparison-view__row">
+            <span className="comparison-view__label" id="comparison-label">
+              Comparison
+            </span>
+            <div role="group" aria-labelledby="comparison-label" className="comparison-view__choices">
+              {COMPARISONS.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  aria-pressed={c.id === comparison.id}
+                  className="comparison-view__choice"
+                  onClick={() => chooseComparison(c.id)}
+                >
+                  {c.label}
+                </button>
               ))}
-            </select>
-          </label>
+            </div>
+          </div>
+          {/* The category fixes both indicators; say which is which so the buttons below read as colouring only. */}
+          <p className="comparison-view__pair">
+            Compares <strong>{driver.label}</strong> (chart x-axis) with <strong>{outcome.label}</strong> (chart
+            y-axis and map colour).
+          </p>
+          <div className="comparison-view__row">
+            <span className="comparison-view__label" id="map-colour-label">
+              Colour the map by
+            </span>
+            <div role="group" aria-labelledby="map-colour-label" className="comparison-view__choices">
+              <button
+                type="button"
+                aria-pressed={view === 'outcome'}
+                className="comparison-view__choice"
+                onClick={() => setView('outcome')}
+              >
+                Actual {outcome.label.toLowerCase()}
+              </button>
+              <button
+                type="button"
+                aria-pressed={view === 'residual'}
+                className="comparison-view__choice"
+                disabled={!fit}
+                onClick={() => setView('residual')}
+              >
+                Better or worse than expected
+              </button>
+            </div>
+            <label className="comparison-view__picker">
+              <span>Highlight a country</span>
+              <select
+                value={selectedCode ?? ''}
+                onChange={(event) => setSelectedCode(event.target.value || undefined)}
+                disabled={points.length === 0}
+              >
+                <option value="">None</option>
+                {points.map((p) => (
+                  <option key={p.code} value={p.code}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
         </div>
 
         {pair.status === 'error' ? (

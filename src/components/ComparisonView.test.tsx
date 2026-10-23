@@ -148,6 +148,19 @@ describe('ComparisonView', () => {
     expect(screen.getByText(/Beats expectation:/)).toBeInTheDocument()
   })
 
+  it('names the two indicators of the chosen category and labels the map colouring', async () => {
+    const user = userEvent.setup()
+    render(<ComparisonView countries={countries} />)
+    const pair = await screen.findByText(/Compares/)
+    expect(pair).toHaveTextContent('Health spending per person (chart x-axis) with Life expectancy')
+    expect(screen.getByRole('group', { name: 'Colour the map by' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Actual life expectancy' })).toHaveAttribute('aria-pressed', 'true')
+
+    await user.click(screen.getByRole('button', { name: 'Gender gap vs income' }))
+    expect(screen.getByText(/Compares/)).toHaveTextContent('GDP per capita (chart x-axis) with Women in the labour force')
+    expect(screen.getByRole('button', { name: 'Actual women in the labour force' })).toBeInTheDocument()
+  })
+
   it('changing the comparison clears the selection and loads the other pair', async () => {
     const user = userEvent.setup()
     render(<ComparisonView countries={countries} />)
