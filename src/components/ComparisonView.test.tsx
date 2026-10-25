@@ -160,26 +160,29 @@ describe('ComparisonView', () => {
   })
 
   it('names the two indicators of the chosen category and labels the map colouring', async () => {
-    const user = userEvent.setup()
+    // const user = userEvent.setup() // needed again when the gender-income comparison is restored
     render(<ComparisonView countries={countries} />)
     const pair = await screen.findByText(/Compares/)
     expect(pair).toHaveTextContent('Health spending per person (chart x-axis) with Life expectancy')
     expect(screen.getByRole('group', { name: 'Colour the map by' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Actual life expectancy' })).toHaveAttribute('aria-pressed', 'true')
 
-    await user.click(screen.getByRole('button', { name: 'Gender gap vs income' }))
-    expect(screen.getByText(/Compares/)).toHaveTextContent('GDP per capita (chart x-axis) with Women in the labour force')
-    expect(screen.getByRole('button', { name: 'Actual women in the labour force' })).toBeInTheDocument()
+    // Hidden with the gender-income comparison (see config/comparisons.ts); restore with it.
+    // await user.click(screen.getByRole('button', { name: 'Gender gap vs income' }))
+    // expect(screen.getByText(/Compares/)).toHaveTextContent('GDP per capita (chart x-axis) with Women in the labour force')
+    // expect(screen.getByRole('button', { name: 'Actual women in the labour force' })).toBeInTheDocument()
   })
 
-  it('changing the comparison clears the selection and loads the other pair', async () => {
-    const user = userEvent.setup()
-    render(<ComparisonView countries={countries} />)
-    await user.click(await screen.findByRole('button', { name: 'dot click Alpha' }))
-    await user.click(screen.getByRole('button', { name: 'Gender gap vs income' }))
-    expect(screen.getByTestId('scatter-active')).toBeEmptyDOMElement()
-    expect(requestedKeys.at(-1)).toBe('gender-income')
-  })
+  // Hidden with the gender-income comparison (see config/comparisons.ts): with a single
+  // category there is no other pair to switch to. Restore with it.
+  // it('changing the comparison clears the selection and loads the other pair', async () => {
+  //   const user = userEvent.setup()
+  //   render(<ComparisonView countries={countries} />)
+  //   await user.click(await screen.findByRole('button', { name: 'dot click Alpha' }))
+  //   await user.click(screen.getByRole('button', { name: 'Gender gap vs income' }))
+  //   expect(screen.getByTestId('scatter-active')).toBeEmptyDOMElement()
+  //   expect(requestedKeys.at(-1)).toBe('gender-income')
+  // })
 
   it('enlarges the chart in a dialog that shares the hover state, and the cross closes it', async () => {
     const user = userEvent.setup()
