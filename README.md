@@ -1,84 +1,141 @@
 # Development Indicator
 
-A dashboard of world development indicators (economy, prosperity and people), built from World Bank open data.
+An interactive dashboard that shows how countries around the world are doing on the **economy, prosperity and quality of life**, using open data from the World Bank. Pick an indicator and see the world coloured by it, follow countries over time, compare two indicators, explore trends and migration on a second map, or just ask the built-in assistant.
 
-## Stack
-React 19, TypeScript, Vite (with React Compiler), Recharts, Mapbox GL JS, Vitest + React Testing Library.
+![Development Indicator header and theme tabs](docs/screenshots/header.webp)
 
-## Setup
+## Screenshots
+
+**World map:** every country coloured by its latest value of the chosen indicator (GDP per capita here). Click a country to follow it in the trend chart.
+
+![World map coloured by GDP per capita](docs/screenshots/world-map.webp)
+
+**Compare two indicators:** health spending vs life expectancy, with the map and scatter linked.
+
+![Compare two indicators](docs/screenshots/compare.webp)
+
+**Explore (Kepler.gl), indicator view:** one dot per capital, sized and coloured by the indicator.
+
+![Explore map: dots sized and coloured by GDP per capita](docs/screenshots/explore-map.webp)
+
+**Explore (Kepler.gl), where people live abroad:** arcs from India to the countries its emigrants live in.
+
+![Explore map: arcs from India](docs/screenshots/explore-arcs.webp)
+
+**Assistant:** ask a question, get a chart.
+
+<img src="docs/screenshots/assistant.png" alt="Chat assistant comparing inflation in Brazil, Sweden and Nigeria" width="380">
+
+
+## What it does
+
+### Browse indicators on a world map
+- Nine indicators in three themes: **Economy** (GDP per capita, GDP growth, inflation, unemployment), **Prosperity** (GNI per capita, income inequality) and **People & quality of life** (life expectancy, population, internet use).
+- Each theme has its own colour. Choosing an indicator colours every country by its **most recent available value**, so the year can differ between countries. Hover a country for its value.
+- Three summary cards show the focused country, the highest country and the median across all countries.
+
+### Follow countries over time
+- Click countries on the map, or use the country picker, to add them (up to four) to the **Compare over time** chart, which shows the last 25 years of the selected indicator.
+
+### Compare two indicators
+- Pairs two indicators for every country, for one fixed year so the comparison is like for like. Today: **health spending per person vs life expectancy**.
+- A world map and a scatter plot with a trend line sit side by side. Hovering or clicking a country in one highlights it in the other. The chart can be enlarged into a dialog.
+- The map can show the actual outcome, or **better or worse than expected**: how far each country sits above or below what the trend line predicts for its spending.
+
+### Explore on a Kepler.gl map
+A second, more flexible map (Kepler.gl, with its own side panel for filters and restyling) with two views:
+- **Indicator by country:** one dot per capital city. Show the **latest value**, or how it **changed** over the last 5, 10 or 20 years: change, % change, yearly growth, or volatility. Change views use a purple (rose) to orange (fell) scale centred on zero, so you see who is moving, not only who is rich. Rates such as inflation get absolute change and volatility only, since a percentage of a percentage misleads.
+- **Where people live abroad:** arcs from a chosen country to the places its emigrants live, for years 1990 to 2024. It follows the country you are focused on in the dashboard. This is a count of people living in a country at mid-year, not people who moved that year.
+
+### Ask the assistant
+- A chat sidebar answers questions about the data on screen, can switch the indicator or add and remove countries, and can draw bar and trend charts in the conversation. The charted numbers always come from the dashboard's own data. History is kept in the browser.
+
+## Data sources
+- **World Bank Open Data** (World Development Indicators), through the public API v2. No key needed.
+- **UN DESA International Migrant Stock 2024** for the migration arcs. United Nations Department of Economic and Social Affairs, Population Division (2024). Licensed CC BY 3.0 IGO. Most 2024 values are extrapolations of the 2020 estimates. A small extract is shipped as `public/data/migrant-stock.json`; see [Migration data](#migration-data).
+- Country outlines come from Mapbox's free `country-boundaries-v1` tileset.
+
+## Tech stack
+React 19 and TypeScript on Vite (with the React Compiler), Recharts for charts, Mapbox GL JS and Kepler.gl for maps, CopilotKit with an OpenAI model for the assistant, Vitest and React Testing Library for unit tests, Playwright for end-to-end tests. Deployed on Vercel.
+
+## Getting started
 1. `npm install`
 2. Create a public Mapbox token (starts with `pk.`) at https://account.mapbox.com/access-tokens/
-3. `cp .env.example .env.local` and set `VITE_MAPBOX_PUBLIC_ACCESS` (`.env.local` is git-ignored)
+3. `cp .env.example .env.local` and set:
+   - `VITE_MAPBOX_PUBLIC_ACCESS`: the Mapbox token (needed for the maps)
+   - `OPENAI_API_KEY`: only for the assistant; it has no `VITE_` prefix on purpose, so it stays server-side
 4. `npm run dev` (restart it after changing env vars)
 
-Without a token the map panel shows a setup message; the rest of the dashboard still works.
+Without a Mapbox token the map panels show a setup message; without an OpenAI key the chat shows an error. The rest of the dashboard still works.
 
-## Scripts
+### Scripts
 - `npm run dev`: start the dev server
 - `npm run build`: typecheck and build
 - `npm run lint`: ESLint
-- `npm test`: run unit and component tests
+- `npm test`: unit and component tests
+- `npm run test:e2e`: Playwright tests (all World Bank and migration requests are mocked, so no network or token is needed)
 
-## Structure
+### Tests and CI
+GitHub Actions runs lint, typecheck, build, unit tests and the Playwright tests on every pull request and push to `main` and `production`, and a guard only allows pull requests into `production` from `main`.
+
+## Project structure
 ```
 src/
 ├── api/         World Bank requests (typed, no React)
 ├── types/       API and domain types
-├── config/      Indicator list and theme constants
-├── hooks/       Data hooks (useCountries, useIndicator, useTrend, usePairedIndicators, useAsyncData)
-├── components/  Small presentational components with co-located CSS
-├── utils/       Pure helpers (formatting, colour scale, stats, chart rows, pair join and trend fit)
+├── config/      Indicators, themes, comparisons, Kepler layer and metric settings
+├── hooks/       Data hooks (countries, indicator, trend, history, migration, paired indicators)
+├── components/  Presentational components with co-located CSS
+├── utils/       Pure helpers (formatting, colour, stats, change metrics, pair fit, migration arcs)
 └── App.tsx      Owns selection state and wires data to components
+server/          CopilotKit runtime (also served as a Vercel Function from api/)
+scripts/         One-off data preparation (migration extract)
+e2e/             Playwright tests and mocks
 ```
 
-## Data
-Source: World Bank API v2 (no key needed). Indicators in `src/config/indicators.ts`:
-GDP per capita, GDP growth, inflation, unemployment, GNI per capita, Gini, life expectancy, population. A new indicator needs only an entry there (plus a `ValueFormat` in `utils/format.ts` if it is a new kind of number); the selector, maps, chart and assistant all read that list.
+## Migration data
+`public/data/migrant-stock.json` (about 170 KB) holds, for each origin country, the total living abroad and the 15 largest destinations for each of 1990, 1995, 2000, 2005, 2010, 2015, 2020 and 2024. It is built from the UN DESA workbook by `scripts/build_migrant_stock.py` (needs `pip install openpyxl pycountry`) and is only fetched when the arcs view is opened. Do not put the source `.xlsx` files under `public/`: everything there is served to visitors.
 
-- The map uses each country's **most recent available value** (`mrnev=1`), so the year differs per country.
-- The map is Mapbox GL JS drawing the free `mapbox.country-boundaries-v1` vector tileset (source layer `country_boundaries`). Countries are joined to World Bank data on `iso_3166_1_alpha_3`; Kosovo is `XKS` in Mapbox but `XKX` in the World Bank API, translated in `utils/countryCode.ts`. Disputed/alternate-worldview polygons are filtered out.
-- `WorldMap` is lazy-loaded so the ~1.9 MB Mapbox chunk does not block first paint.
-- Aggregates ("World", "Arab World", ...) are filtered out using the country list's region id `NA`.
+## Known limits
+- Kepler.gl is an **alpha** release and heavy (about 7 MB, in its own lazy chunk).
+- The comparison trend line is a straight line against the log of the first indicator. It explains about 68% of life expectancy. A second category, GDP per capita vs women in the labour force, is commented out in `config/comparisons.ts` because the straight line explains only about 1% of it (the relationship is U-shaped).
+- Capital-city coordinates place the Kepler dots and arc ends; the Channel Islands have no ISO code and are skipped in the migration data.
+- Mapbox and OpenAI usage is billed beyond free tiers. Use a Mapbox token restricted to your domains, and an OpenAI key with a spending limit (each question sends the visible country data to OpenAI).
+- Keyboard access to map countries is limited; the country dropdown is the keyboard route.
 
-## Notes
-- TypeScript is pinned to 6.0.x because `typescript-eslint` 8.72 does not yet accept TypeScript 7. Revisit when it does.
-- Not yet done: keyboard access to map countries (the country dropdown is the keyboard route); live verification of the Mapbox layers needs a token.
-- Mapbox GL needs a token, and usage is billed by Mapbox beyond its free tier. Use a public token restricted to your domains.
+---
 
-## Compare two indicators
-- The "Compare two indicators" panel (`ComparisonView`) relates two indicators for every country: a `WorldMap` and a `ScatterPlot` (log x axis, trend line) side by side. Hovering or clicking a country in either outlines it in the other; a country picker is the keyboard route. The chart's expand button opens it in a larger dialog (`ChartDialog`, a native `<dialog>`: closes with the cross, Escape or a click outside) that shares the same hover and selection state.
-- The scatter's hover callout is drawn from that shared state, not by Recharts' own tooltip, which picks the nearest point by x alone and can name a neighbouring country. The log x axis spans whole powers of ten (`utils/logAxis.ts`) so every tick label sits at its true position.
-- Categories live in `config/comparisons.ts`: health spending per person vs life expectancy. A second category, GDP per capita vs women in the labour force, is commented out for now (restore its entry to bring it back). Both indicators are fetched for one fixed year (2021, `fetchIndicatorForYear`) so countries are compared like for like, unlike the `mrnev` map where years differ. 2021 is the latest year with ~190 countries of health-spending data (checked 2026-10-23).
-- Map toggle: colour by the outcome, or by the **residual** (outcome minus what the trend line predicts, diverging palette). `utils/pairs.ts` does the join, the least-squares fit of the outcome on `log10(driver)` and the residuals.
-- Known limits: the fit is a straight line in log space. It explains ~68% of life expectancy but only ~1% of women's labour participation (the relationship is U-shaped), which is why the gender category is hidden: its residual map mostly shows distance from the average. A curved fit would suit it better.
-- This panel is a second Mapbox map on the page, so it adds one more map load.
+## Developer notes
+Details for working on the code. You do not need them to use the app.
 
-## Kepler.gl panel
-- "Explore" panel: `KeplerMap` plots one point per country capital (World Bank capital coordinates), sized and coloured by the selected indicator. Countries with no value or no coordinates are skipped (`utils/keplerData.ts`). Layer styling lives in `config/keplerConfig.ts`.
-- **Trend metrics:** the panel shows the latest value or how it changed over the last 5/10/20 years (`MetricSelector`). Metrics are defined in `config/keplerMetrics.ts`: change, % change, yearly growth (CAGR) and volatility, computed per country in `utils/changeMetrics.ts` from one bulk request (`fetchHistoryAll`, `useIndicatorHistory`). The ends of each series are the country's own first and last readings in the window, so countries reporting different years still compare.
-  - Rates (inflation, unemployment, growth, shares) have `kind: 'rate'` in `config/indicators.ts` and get no % change or CAGR (a percentage of a percentage misleads). A metric that cannot be computed (too few readings, zero or negative base) is an empty cell, never 0.
-  - Change metrics use a diverging palette centred on zero: Kepler's quantize scale spans the data's min to max, so `keplerDivergingColorRange` gives equal bands over `[-extent, extent]` as a custom colour map. Size uses `Size: |…|` columns so a big fall draws as large as a big rise.
-  - Switching metric restyles the existing layer in place (`layerVisualChannelConfigChange`), keeping the user's pan/zoom/tweaks.
-- Kepler is an **alpha** (3.3.0-alpha.16, the npm `latest` tag) and weighs ~7 MB in its own lazy chunk; `node_modules` grew by ~1.3 GB.
-- It has its own Redux store, created inside `KeplerMap`, so the rest of the app does not use Redux.
-- Workarounds in `vite.config.ts` / `package.json`, to revisit on every Kepler upgrade:
-  - `resolve.alias.assert` + `define['process.env.NODE_DEBUG']`: Kepler calls Node's `assert`, which Vite stubs out in the browser.
+### Data and maps
+- A new indicator needs only an entry in `src/config/indicators.ts` (plus a `ValueFormat` in `utils/format.ts` if it is a new kind of number); the selector, maps, chart and assistant all read that list. Check the code on the live World Bank API first. Set `kind: 'rate'` for percentages and indexes.
+- The country map joins Mapbox polygons to World Bank data on `iso_3166_1_alpha_3`. Kosovo is `XKS` in Mapbox but `XKX` in the World Bank API (`utils/countryCode.ts`); disputed or alternate-worldview polygons are filtered out. Aggregates ("World", "Arab World", ...) are removed using the country list's region id `NA`.
+- `WorldMap` is lazy-loaded so the ~1.9 MB Mapbox chunk does not block first paint. The comparison panel is a second Mapbox map, so it adds one more map load.
+- TypeScript is pinned to 6.0.x because `typescript-eslint` 8.72 does not yet accept TypeScript 7.
+
+### Compare two indicators
+- Categories live in `config/comparisons.ts`. Both indicators are fetched for one fixed year (2021, `fetchIndicatorForYear`); 2021 is the latest year with about 190 countries of health-spending data (checked 2026-10-23).
+- `utils/pairs.ts` does the join, the least-squares fit of the outcome on `log10(driver)` and the residuals behind the "better or worse than expected" colouring.
+- The scatter's hover callout is drawn from shared state, not Recharts' own tooltip, which picks the nearest point by x alone and can name a neighbouring country. The log x axis spans whole powers of ten (`utils/logAxis.ts`).
+- The enlarge dialog (`ChartDialog`) is a native `<dialog>`: it closes with the cross, Escape or a click outside, and shares the hover and selection state.
+
+### Kepler.gl panel
+- `KeplerMap` has its own Redux store; the rest of the app does not use Redux. The instance is registered (`registerEntry`) before data is dispatched because Kepler silently drops actions sent before its component mounts.
+- Dataset and layer settings: `utils/keplerData.ts`, `config/keplerConfig.ts`, `config/keplerMetrics.ts`. Metric maths is in `utils/changeMetrics.ts` and uses one bulk request (`fetchHistoryAll`, `useIndicatorHistory`). Each country's change uses its own first and last readings in the window. A metric that cannot be computed (too few readings, zero or negative base) is an empty cell, never 0.
+- Kepler's quantize scale spans the data's min to max, so `keplerDivergingColorRange` gives equal bands over `[-extent, extent]` as a custom colour map to centre change metrics on zero. Size uses `Size: |…|` columns so a big fall draws as large as a big rise.
+- Switching metric or theme restyles the existing layer in place (no remount), keeping the user's pan, zoom and tweaks.
+- Kepler builds datasets asynchronously, so the arc layer and its tooltip travel with the arcs dataset's first load (as saved-map config) instead of being added afterwards. The arcs data is built by `utils/migration.ts`.
+- Workarounds in `vite.config.ts` and `package.json`, to revisit on every Kepler upgrade:
+  - `resolve.alias.assert` and `define['process.env.NODE_DEBUG']`: Kepler calls Node's `assert`, which Vite stubs out in the browser.
   - `overrides` pins all `@deck.gl/*` to 9.3.11: Kepler's own ranges let `widgets` float to 9.4.0, which needs a newer core and breaks the production build.
-- The instance is registered (`registerEntry`) before data is dispatched because Kepler silently drops actions sent before its component mounts.
 
-## Chat assistant (CopilotKit)
-- A CopilotKit sidebar (`components/Assistant.tsx`, lazy-loaded, ~1.6 MB chunk) answers questions about the current data and can switch the indicator or add/remove comparison countries. What it sees is shared with `useAgentContext`; what it can do is registered with `useFrontendTool`.
-- The runtime (`server/copilotRuntime.ts`, `gpt-4.1-mini`) runs as a Vercel Function at `/api/copilotkit` (`api/copilotkit/[...path].ts`). In `npm run dev` the same runtime is served by `server/copilotDevPlugin.ts`, so no extra process is needed.
-- Set `OPENAI_API_KEY` in `.env.local` (and in Vercel). It has no `VITE_` prefix on purpose, so it stays server-side. Without it the chat shows an error; the rest of the dashboard works.
-- `openai` is a direct dependency and pinned with `overrides`: CopilotKit's optional peers otherwise pull `openai@4`, which wants zod 3 while Kepler's packages use zod 4.
-- CopilotKit styles itself with a `.dark` class, so `Assistant` mirrors the OS colour scheme onto `<html>`.
-- Each question sends the visible country data to OpenAI and costs tokens; use a key with a spending limit.
-- **A2UI generative UI:** the runtime sets `a2ui: { injectA2UITool: true }`, so the model can answer comparisons with small visual panels (built-in Text, Row, Column, Card, Divider) rendered in the chat; the frontend needs no extra setup. The system prompt lists the allowed components, because the renderer is strict and rejects invented props such as `gap` and data-bound `List` templates (`path`), so the prompt forbids both. The built-in Card hard-codes a white background, so `components/Assistant.css` overrides it in dark mode. Restart the dev server after changing `server/copilotRuntime.ts`: the dev plugin caches the runtime.
-- **Charts in the chat:** the model can call `show_bar_chart` (comparisons and top/bottom rankings) and `show_trend_chart` (change over time). The model only names countries; the handlers look the numbers up in the dashboard data (`utils/chartData.ts`) or fetch the series, so charted values always match the rest of the app. Charts render with Recharts (`ComparisonBarChart`, and the dashboard's `TrendChart`) inside the chat. A2UI is no longer used for numeric comparisons: its built-in components have no chart.
-
-### Chat history and rate limiting
-- **History:** the conversation is saved in this browser's `localStorage` (`usePersistedChat`, `utils/chatHistory.ts`) and restored on reload, including charts (they are rebuilt from the saved tool results). Only the last `MAX_HISTORY_MESSAGES` (10) are kept, and that same list is what is sent to the model, so it also caps memory and token cost. Trimming always starts on a user message so a tool result is never separated from the assistant message that requested it. The hook subscribes to the agent instead of using an effect on `agent.messages`, because the agent mutates that array in place (React and the React Compiler would never see a change). An empty list never overwrites saved history; only the "New chat" button clears it.
-- **Rate limit (set in Vercel, not in code):** a Firewall rule limits each IP to 10 chat requests per minute. Only the two routes that call the model are counted. Create it, staged in log mode first:
+### Chat assistant (CopilotKit)
+- The sidebar (`components/Assistant.tsx`, lazy-loaded, ~1.6 MB) shares what it sees with `useAgentContext` and registers what it can do with `useFrontendTool`. The runtime (`server/copilotRuntime.ts`, `gpt-4.1-mini`) runs as a Vercel Function at `/api/copilotkit` (`api/copilotkit/[...path].ts`); `npm run dev` serves the same runtime from `server/copilotDevPlugin.ts`, which caches it, so restart the dev server after changing the runtime.
+- `openai` is a direct dependency and pinned with `overrides`: CopilotKit's optional peers otherwise pull `openai@4`, which wants zod 3 while Kepler's packages use zod 4. CopilotKit styles itself with a `.dark` class, so `Assistant` mirrors the OS colour scheme onto `<html>`.
+- **Charts and A2UI:** the model can call `show_bar_chart` and `show_trend_chart`. It only names countries; the handlers look the numbers up in the dashboard data (`utils/chartData.ts`) or fetch the series, so values always match the app. Both take an optional `indicatorId`, so asking about another indicator charts it without moving the maps. `switch_indicator` and the comparison tools change the dashboard only on an explicit request. The runtime also enables small A2UI panels (`injectA2UITool`); the system prompt lists the allowed components because the renderer rejects invented props.
+- **History:** saved in `localStorage` (`usePersistedChat`, `utils/chatHistory.ts`) and restored on reload, charts included. Only the last 10 messages are kept and sent to the model, which also caps token cost. Trimming starts on a user message so a tool result is never separated from the assistant message that requested it. The hook subscribes to the agent rather than using an effect on `agent.messages`, because the agent mutates that array in place. An empty list never overwrites saved history; only "New chat" clears it.
+- **Rate limit (set in Vercel, not in code):** a Firewall rule limits each IP to 10 chat requests per minute, counting only the two routes that call the model. Create it staged in log mode first:
   ```
   vercel firewall rules add "Rate limit chat" \
     --condition '{"type":"method","op":"eq","value":"POST"}' \
@@ -86,11 +143,10 @@ GDP per capita, GDP growth, inflation, unemployment, GNI per capita, Gini, life 
     --action rate_limit --rate-limit-window 60 --rate-limit-requests 10 \
     --rate-limit-keys ip --rate-limit-action log --yes
   ```
-  Review the traffic, then switch to enforcing with `vercel firewall rules edit "Rate limit chat" --rate-limit-action rate_limit --yes`, and publish with `vercel firewall publish --yes`. A message that makes the model call a chart tool uses two requests (the run, then a follow-up run with the tool result). Counters are per Vercel region. The browser shows a notice when it receives HTTP 429. `npm run dev` has no limiter.
-- **Chat questions do not move the maps:** `show_bar_chart` and `show_trend_chart` take an optional `indicatorId`, so asking about another indicator (e.g. inflation while GDP growth is shown) fetches that data for the chart and leaves the dashboard alone. `switch_indicator` and the comparison tools change the dashboard only on an explicit request ("show inflation on the map"); both the tool descriptions and the system prompt say so.
+  Review the traffic, then enforce with `vercel firewall rules edit "Rate limit chat" --rate-limit-action rate_limit --yes` and publish with `vercel firewall publish --yes`. A message that makes the model call a chart tool uses two requests. Counters are per Vercel region. The browser shows a notice on HTTP 429. `npm run dev` has no limiter.
 
-## Themes and colour
-- Indicators are grouped into three themes (`TOPIC_ORDER` in `config/indicators.ts`): Economy, Prosperity, and People & quality of life. The selector shows a tab per theme and **only the selected theme's indicators**. The selected theme is derived from the selected indicator (one source of truth), so a change made by the chat assistant updates the tabs too. Choosing a theme selects its first indicator.
-- Each theme has its own colour: the accent for chips, tabs and chart bars is set by `data-topic` on the page root (`styles/themes.css`, light and dark), and the map palettes (`THEME_PALETTES` in `config/theme.ts`) are passed to the Mapbox map and the Kepler layer, which cannot read CSS variables. Kepler is recoloured in place (`layerVisConfigChange`), not remounted, so a theme change costs no extra Mapbox map load.
-- To add an indicator, add it to `INDICATORS` after checking the code on the live World Bank API. To add a theme, extend `Topic`, `TOPIC_LABELS`, `TOPIC_ORDER`, `THEME_PALETTES` and the rules in `themes.css`; `config/themes.test.ts` fails if any of these is missing.
+### Themes and colour
+- Themes are `TOPIC_ORDER` in `config/indicators.ts`. The selected theme is derived from the selected indicator (one source of truth), so a change made by the assistant updates the tabs too; choosing a theme selects its first indicator.
+- The accent colour for chips, tabs and chart bars comes from `data-topic` on the page root (`styles/themes.css`, light and dark). Map palettes (`THEME_PALETTES`, `DIVERGING_PALETTE` in `config/theme.ts`) live in JavaScript because Mapbox and Kepler cannot read CSS variables.
+- To add a theme, extend `Topic`, `TOPIC_LABELS`, `TOPIC_ORDER`, `THEME_PALETTES` and the rules in `themes.css`; `config/themes.test.ts` fails if any is missing.
 - Selection and colour changes log to the browser console with `[theme]`, `[indicator]`, `[map]`, `[kepler]` and `[chat]` prefixes.
