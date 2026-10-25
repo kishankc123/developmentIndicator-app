@@ -25,9 +25,9 @@ src/
 ├── api/         World Bank requests (typed, no React)
 ├── types/       API and domain types
 ├── config/      Indicator list and theme constants
-├── hooks/       Data hooks (useCountries, useIndicator, useTrend, useAsyncData)
+├── hooks/       Data hooks (useCountries, useIndicator, useTrend, usePairedIndicators, useAsyncData)
 ├── components/  Small presentational components with co-located CSS
-├── utils/       Pure helpers (formatting, colour scale, stats, chart rows)
+├── utils/       Pure helpers (formatting, colour scale, stats, chart rows, pair join and trend fit)
 └── App.tsx      Owns selection state and wires data to components
 ```
 
@@ -45,8 +45,20 @@ GDP per capita, GDP growth, inflation, unemployment, GNI per capita, Gini, life 
 - Not yet done: keyboard access to map countries (the country dropdown is the keyboard route); live verification of the Mapbox layers needs a token.
 - Mapbox GL needs a token, and usage is billed by Mapbox beyond its free tier. Use a public token restricted to your domains.
 
+## Compare two indicators
+- The "Compare two indicators" panel (`ComparisonView`) relates two indicators for every country: a `WorldMap` and a `ScatterPlot` (log x axis, trend line) side by side. Hovering or clicking a country in either outlines it in the other; a country picker is the keyboard route. The chart's expand button opens it in a larger dialog (`ChartDialog`, a native `<dialog>`: closes with the cross, Escape or a click outside) that shares the same hover and selection state.
+- The scatter's hover callout is drawn from that shared state, not by Recharts' own tooltip, which picks the nearest point by x alone and can name a neighbouring country. The log x axis spans whole powers of ten (`utils/logAxis.ts`) so every tick label sits at its true position.
+- Categories live in `config/comparisons.ts`: health spending per person vs life expectancy. A second category, GDP per capita vs women in the labour force, is commented out for now (restore its entry to bring it back). Both indicators are fetched for one fixed year (2021, `fetchIndicatorForYear`) so countries are compared like for like, unlike the `mrnev` map where years differ. 2021 is the latest year with ~190 countries of health-spending data (checked 2026-10-23).
+- Map toggle: colour by the outcome, or by the **residual** (outcome minus what the trend line predicts, diverging palette). `utils/pairs.ts` does the join, the least-squares fit of the outcome on `log10(driver)` and the residuals.
+- Known limits: the fit is a straight line in log space. It explains ~68% of life expectancy but only ~1% of women's labour participation (the relationship is U-shaped), which is why the gender category is hidden: its residual map mostly shows distance from the average. A curved fit would suit it better.
+- This panel is a second Mapbox map on the page, so it adds one more map load.
+
 ## Kepler.gl panel
 - "Explore" panel: `KeplerMap` plots one point per country capital (World Bank capital coordinates), sized and coloured by the selected indicator. Countries with no value or no coordinates are skipped (`utils/keplerData.ts`). Layer styling lives in `config/keplerConfig.ts`.
+- **Trend metrics:** the panel shows the latest value or how it changed over the last 5/10/20 years (`MetricSelector`). Metrics are defined in `config/keplerMetrics.ts`: change, % change, yearly growth (CAGR) and volatility, computed per country in `utils/changeMetrics.ts` from one bulk request (`fetchHistoryAll`, `useIndicatorHistory`). The ends of each series are the country's own first and last readings in the window, so countries reporting different years still compare.
+  - Rates (inflation, unemployment, growth, shares) have `kind: 'rate'` in `config/indicators.ts` and get no % change or CAGR (a percentage of a percentage misleads). A metric that cannot be computed (too few readings, zero or negative base) is an empty cell, never 0.
+  - Change metrics use a diverging palette centred on zero: Kepler's quantize scale spans the data's min to max, so `keplerDivergingColorRange` gives equal bands over `[-extent, extent]` as a custom colour map. Size uses `Size: |…|` columns so a big fall draws as large as a big rise.
+  - Switching metric restyles the existing layer in place (`layerVisualChannelConfigChange`), keeping the user's pan/zoom/tweaks.
 - Kepler is an **alpha** (3.3.0-alpha.16, the npm `latest` tag) and weighs ~7 MB in its own lazy chunk; `node_modules` grew by ~1.3 GB.
 - It has its own Redux store, created inside `KeplerMap`, so the rest of the app does not use Redux.
 - Workarounds in `vite.config.ts` / `package.json`, to revisit on every Kepler upgrade:

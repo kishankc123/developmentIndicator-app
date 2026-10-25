@@ -46,6 +46,7 @@ async function fetchAllRows<T>(
     const response = await fetch(`${BASE_URL}/${path}?${query}`, { signal })
     if (!response.ok) throw new Error(`World Bank request failed (${response.status})`)
     const parsed = parseEnvelope<T>(await response.json())
+    console.log("Parsed", parsed)
     pages = parsed.pages
     rows.push(...parsed.rows)
   }
@@ -107,6 +108,24 @@ export async function fetchLatestByCountry(
   return rows.map(toObservation).filter((o): o is Observation => o !== null)
 }
 
+/**
+ * Fetches one indicator for every economy in a single year, so two indicators fetched for
+ * the same year can be compared like for like (unlike `mrnev`, where years differ per country).
+ * The result still contains aggregates and null values; filter against `fetchCountries`.
+ */
+export async function fetchIndicatorForYear(
+  indicatorId: string,
+  year: number,
+  signal?: AbortSignal,
+): Promise<Observation[]> {
+  const rows = await fetchAllRows<RawObservation>(
+    `country/all/indicator/${indicatorId}`,
+    { date: String(year) },
+    signal,
+  )
+  return rows.map(toObservation).filter((o): o is Observation => o !== null)
+}
+
 /** Fetches a yearly series for the given countries, sorted oldest to newest. */
 export async function fetchSeries(
   indicatorId: string,
@@ -118,6 +137,27 @@ export async function fetchSeries(
   if (countryCodes.length === 0) return []
   const rows = await fetchAllRows<RawObservation>(
     `country/${countryCodes.join(';')}/indicator/${indicatorId}`,
+    { date: `${fromYear}:${toYear}` },
+    signal,
+  )
+  return rows
+    .map(toObservation)
+    .filter((o): o is Observation => o !== null)
+    .sort((a, b) => a.year - b.year)
+}
+
+/**
+ * Fetches a yearly series for every economy at once (one bulk request, a few pages).
+ * Aggregates are still included; filter against `fetchCountries`. Sorted oldest to newest.
+ */
+export async function fetchHistoryAll(
+  indicatorId: string,
+  fromYear: number,
+  toYear: number,
+  signal?: AbortSignal,
+): Promise<Observation[]> {
+  const rows = await fetchAllRows<RawObservation>(
+    `country/all/indicator/${indicatorId}`,
     { date: `${fromYear}:${toYear}` },
     signal,
   )

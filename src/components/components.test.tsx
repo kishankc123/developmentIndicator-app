@@ -2,12 +2,16 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { INDICATORS } from '../config/indicators'
+import { KEPLER_METRICS, KEPLER_PERIODS, type KeplerMetricId } from '../config/keplerMetrics'
 import type { Country } from '../types/worldBank'
 import { AppHeader } from './AppHeader'
 import { CountrySelector } from './CountrySelector'
 import { IndicatorSelector } from './IndicatorSelector'
+import { FlowsSelector } from './FlowsSelector'
+import { MetricSelector } from './MetricSelector'
 import { StatCard } from './StatCard'
 import { StatusMessage } from './StatusMessage'
+import { ViewSwitch } from './ViewSwitch'
 
 const countries: Country[] = [
   { code: 'NPL', name: 'Nepal', region: 'South Asia', incomeLevel: 'Lower middle income', latitude: null, longitude: null },
@@ -153,5 +157,87 @@ describe('CountrySelector', () => {
   it('disables adding when the maximum is reached', () => {
     setup(['NPL', 'USA'], 2)
     expect(screen.getByRole('combobox')).toBeDisabled()
+  })
+})
+
+describe('MetricSelector', () => {
+  const metrics = KEPLER_METRICS.filter((m) => m.kinds.includes('rate'))
+  const setup = (metricId: KeplerMetricId) => {
+    const onMetricChange = vi.fn()
+    const onPeriodChange = vi.fn()
+    render(
+      <MetricSelector
+        metrics={metrics}
+        metricId={metricId}
+        periods={KEPLER_PERIODS}
+        period={10}
+        onMetricChange={onMetricChange}
+        onPeriodChange={onPeriodChange}
+      />,
+    )
+    return { onMetricChange, onPeriodChange }
+  }
+
+  it('lists only the metrics it is given and marks the chosen one', () => {
+    setup('change')
+    expect(screen.getAllByRole('radio', { name: /Latest value|Change|Volatility/ })).toHaveLength(3)
+    expect(screen.queryByRole('radio', { name: '% change' })).not.toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'Change' })).toBeChecked()
+  })
+
+  it('disables the period for the latest value', () => {
+    setup('latest')
+    expect(screen.getByRole('radio', { name: '5 years' })).toBeDisabled()
+  })
+
+  it('reports metric and period choices', async () => {
+    const { onMetricChange, onPeriodChange } = setup('change')
+    await userEvent.click(screen.getByRole('radio', { name: 'Volatility' }))
+    await userEvent.click(screen.getByRole('radio', { name: '20 years' }))
+    expect(onMetricChange).toHaveBeenCalledWith('volatility')
+    expect(onPeriodChange).toHaveBeenCalledWith(20)
+  })
+})
+
+describe('ViewSwitch', () => {
+  it('marks the current view and reports a change', async () => {
+    const onChange = vi.fn()
+    render(<ViewSwitch view="indicator" onChange={onChange} />)
+    expect(screen.getByRole('radio', { name: 'Indicator by country' })).toBeChecked()
+    await userEvent.click(screen.getByRole('radio', { name: 'Where people live abroad' }))
+    expect(onChange).toHaveBeenCalledWith('flows')
+  })
+})
+
+describe('FlowsSelector', () => {
+  const setup = (originCode: string | undefined) => {
+    const onOriginChange = vi.fn()
+    const onYearChange = vi.fn()
+    render(
+      <FlowsSelector
+        origins={countries}
+        originCode={originCode}
+        years={[1990, 2024]}
+        yearIndex={1}
+        onOriginChange={onOriginChange}
+        onYearChange={onYearChange}
+      />,
+    )
+    return { onOriginChange, onYearChange }
+  }
+
+  it('shows the chosen country and year and reports changes', async () => {
+    const { onOriginChange, onYearChange } = setup('NPL')
+    expect(screen.getByRole('combobox', { name: 'People born in' })).toHaveValue('NPL')
+    expect(screen.getByRole('combobox', { name: 'Year' })).toHaveValue('1')
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'People born in' }), 'USA')
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Year' }), '0')
+    expect(onOriginChange).toHaveBeenCalledWith('USA')
+    expect(onYearChange).toHaveBeenCalledWith(0)
+  })
+
+  it('asks for a country when the dashboard one has no data', () => {
+    setup(undefined)
+    expect(screen.getByRole('option', { name: 'Choose a country…' })).toBeInTheDocument()
   })
 })
