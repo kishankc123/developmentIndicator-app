@@ -41,13 +41,16 @@ export const COMPARISONS: ComparisonDefinition[] = [
     driver: { id: 'SH.XPD.CHEX.PC.CD', label: 'Health spending per person', format: 'usd' },
     outcome: { id: 'SP.DYN.LE00.IN', label: 'Life expectancy', format: 'years' },
   },
-  {
-    id: 'gender-income',
-    label: 'Gender gap vs income',
-    question: 'Do richer countries have more women in the labour force?',
-    topic: 'prosperity',
-    year: 2021,
-    driver: { id: 'NY.GDP.PCAP.CD', label: 'GDP per capita', format: 'usd' },
-    outcome: { id: 'SL.TLF.CACT.FE.ZS', label: 'Women in the labour force', format: 'percent' },
-  },
+  // Hidden for now: the straight-line fit explains only ~1% of women's labour participation
+  // (the relationship is U-shaped). Restore this entry to bring the category back, together with
+  // the commented-out tests in ComparisonView.test.tsx.
+  // {
+  //   id: 'gender-income',
+  //   label: 'Gender gap vs income',
+  //   question: 'Do richer countries have more women in the labour force?',
+  //   topic: 'prosperity',
+  //   year: 2021,
+  //   driver: { id: 'NY.GDP.PCAP.CD', label: 'GDP per capita', format: 'usd' },
+  //   outcome: { id: 'SL.TLF.CACT.FE.ZS', label: 'Women in the labour force', format: 'percent' },
+  // },
 ]
